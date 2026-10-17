@@ -4,6 +4,10 @@ read_when: Changing RTTY discovery, resource limits, tabs, or receive lifecycle
 
 # RTTY monitor (1.0.42)
 
+Local 1.0.43 adds [PSK31/63](psk.md) through this same capture, FFT and worker.
+RTTY keeps its 16 decoder slots; PSK has eight slots. Both share 32 retained
+digital tabs. Close all tabs closes both digital modes and retains CW.
+
 RTTY is an optional receiver alongside the existing CW decoder. It scans the
 host's captured RF spectrum, independently of Radio's mode, selected passband,
 speaker volume and the selected notebook tab. It cannot receive outside that
@@ -12,8 +16,9 @@ capture or recover samples lost at the source.
 ## Operator workflow
 
 - The toolbar starts with **CW**, then **RTTY**, for independent decoding control.
-  Turn CW off to pause decoding while keeping its tab, text and Markdown log.
-  Turning it back on relearns timing. CW starts enabled each session, matching
+  Turn CW off, or close its tab's X, to stop CW reception and timing learning.
+  Its tab closes; confirmed text and the Markdown log are retained.
+  Turning it back on reopens/selects the tab and relearns timing. CW starts enabled each session, matching
   the previous Pause/Resume behavior. RTTY keeps running when CW is off.
 - **RTTY** defaults on when this module instance has no saved preference.
   Choices, including off, are remembered separately for each host.

@@ -14,6 +14,8 @@ void CWNotebook::explainWithAI(int provider){
     context.carrierOffset=channel_.carrierOffset(d.tone);context.mode=mode_+(channel_.amAudio?" (audio tones)":"");
     context.recovered=showRecovery_;context.manualSpeed=s.manualWpm>0;context.timestamp=std::time(nullptr);
     context.grid=cw::host::grid(name_);
+    const auto& rx=showRecovery_?s.recoveredReception:s.reception;
+    context.snr=rx.snr;context.snrLast=!rx.currentSnr(playing_&&!s.paused&&d.signal);context.lastReceivedUtc=rx.lastTextUtc;
     openAnalysisPrompt(provider,cw::analysisPrompt(text,context));
 }
 void CWNotebook::openAnalysisPrompt(int provider,const std::string& prompt){

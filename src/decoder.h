@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 #include "run_buffer.h"
+#include "reception.h"
 #include <cstdint>
 #include <array>
 #include <complex>
@@ -9,6 +10,7 @@
 #include <functional>
 #include <string>
 #include <vector>
+#include <limits>
 
 namespace cw {
 struct DecoderStats {
@@ -17,6 +19,8 @@ struct DecoderStats {
     uint64_t filteredGlitches = 0, recoveries = 0;
     size_t bufferedRuns = 0;
     std::string provisional;
+    double snrDb=std::numeric_limits<double>::quiet_NaN();
+    radio::Reception reception;
     float provisionalWpm = 0;
 };
 class Timing {

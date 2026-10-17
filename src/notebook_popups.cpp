@@ -10,7 +10,7 @@ void closePopups(){
     auto* window=ImGui::FindWindowByName("CW Notebook###cw_notebook_window");if(!window)return;
     for(int i=0;i<context->OpenPopupStack.Size;++i){
         auto id=context->OpenPopupStack[i].PopupId;
-        for(const char* title:{"CW Settings","How to use","RTTY signals"}){
+        for(const char* title:{"CW Settings","How to use","Digital signals"}){
             if(id==ImHashStr(title,0,window->ID)){ImGui::ClosePopupToLevel(i,true);return;}
         }
     }

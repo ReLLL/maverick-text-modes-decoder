@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 extern char** environ;
-SDRPP_MOD_INFO{"cw_notebook","CW decoder with recoverable Markdown logs","ReLLL",CW_VERSION_MAJOR,CW_VERSION_MINOR,CW_VERSION_PATCH,1};
+SDRPP_MOD_INFO{"cw_notebook","CW notebook with parallel RTTY and PSK monitoring","ReLLL",CW_VERSION_MAJOR,CW_VERSION_MINOR,CW_VERSION_PATCH,1};
 CWNotebook::CWNotebook(std::string name):name_(std::move(name)),engine_(cw::host::logFolder()){
     auto grid=cw::host::grid(name_);std::snprintf(grid_,sizeof(grid_),"%s",grid.c_str());
     gui::menu.registerEntry(name_,[](void* ctx){static_cast<CWNotebook*>(ctx)->sidebar();},this,this);
@@ -68,9 +68,10 @@ CWNotebook::~CWNotebook(){
 void CWNotebook::postInit(){
     rttySelection_=cw::host::rttySelection(name_);
     if(enabled_){select(streamName_);metadata();}
-    if(cw::host::rttyEnabled(name_))setRttyMonitoring(true);
+    rttyEnabled_=cw::host::rttyEnabled(name_);pskEnabled_=cw::host::pskEnabled(name_);
+    js8Enabled_=cw::host::fecEnabled(name_,true);oliviaEnabled_=cw::host::fecEnabled(name_,false);syncDigitalMonitoring();
 }
-void CWNotebook::enable(){enabled_=true;window_=true;presentWindow_=true;select(streamName_);if(rtty_&&rttyEnabled_)rtty_->enabled(true);metadata();}
+void CWNotebook::enable(){enabled_=true;window_=true;presentWindow_=true;select(streamName_);if(rtty_&&digitalEnabled())rtty_->enabled(true);metadata();}
 void CWNotebook::disable(){enabled_=false;accept_=false;pendingModal_=4;if(rtty_)rtty_->enabled(false);detach();engine_.command("save");}
 void CWNotebook::detach(){
     if(!audioStream_)return;
@@ -79,6 +80,7 @@ void CWNotebook::detach(){
 }
 void CWNotebook::select(const std::string& name){
     detach();streamName_=name;
+    if(!enabled_||!cwTab_.enabled()||engine_.snapshot().paused)return;
     auto names=sigpath::sinkManager.getStreamNames();
     if(std::find(names.begin(),names.end(),name)==names.end()||!sigpath::vfoManager.vfoExists(name))return;
     channelOffset_=channel_.center;
@@ -86,6 +88,7 @@ void CWNotebook::select(const std::string& name){
     if(audioStream_){sink_.setInput(&audioStream_->out);sink_.start();}
 }
 void CWNotebook::metadata(){
+    const auto cw=engine_.snapshot();
     playing_=gui::mainWindow.isPlaying();
     double frequency=gui::waterfall.getCenterFrequency();
     const bool hasVfo=sigpath::vfoManager.vfoExists(streamName_);
@@ -93,14 +96,14 @@ void CWNotebook::metadata(){
     if(hasVfo)frequency+=offset;
     else frequency=double(gui::freqSelect.frequency);
     double center=gui::waterfall.getCenterFrequency(),rate=sigpath::iqFrontEnd.getSampleRate();
-    if(rtty_)rtty_->configure(rate,center,enabled_&&rttyEnabled_&&playing_);
+    if(rtty_)rtty_->configure(rate,center,enabled_&&digitalEnabled()&&playing_);
     bool changed=lastFrequency_!=0&&(std::abs(frequency-lastFrequency_)>.5||center!=lastCenter_||rate!=lastRate_);
     if(changed){engine_.command("retune",std::to_string(frequency));watchdog_.grace(ImGui::GetTime());}
     lastFrequency_=frequency;lastCenter_=center;lastRate_=rate;frequency_=frequency;
     std::string mode=cw::host::mode(streamName_);
     const double width=hasVfo?sigpath::vfoManager.getBandwidth(streamName_):500;
     if(rtty_)rtty_->focus(hasVfo?rtty::radioFocus(mode,frequency,width,center,rate):rtty::Focus{});
-    auto plan=cw::receiveChannel(mode,offset,width,engine_.snapshot().amAudio);
+    auto plan=cw::receiveChannel(mode,offset,width,cw.amAudio);
     supportedMode_=plan.supported;followsBandwidth_=plan.supported;
     bool modeChanged=mode!=mode_;
     bool layoutChanged=modeChanged||std::abs(plan.width-bandwidth_)>.1||plan.amAudio!=channel_.amAudio;
@@ -114,10 +117,13 @@ void CWNotebook::metadata(){
     }
     {std::lock_guard<std::mutex> lock(channelMutex_);channel_.center=plan.center;}
     if(audioStream_&&std::abs(plan.center-channelOffset_)>.1){audioStream_->setOffset(plan.center);channelOffset_=plan.center;}
-    bool ready=enabled_ && supportedMode_ && playing_ && hasVfo;
+    const bool cwEnabled=enabled_&&cwTab_.enabled()&&!cw.paused;
+    if(!cwEnabled&&audioStream_){accept_=false;detach();}
+    else if(cwEnabled&&!audioStream_)select(streamName_);
+    bool ready=cwEnabled && supportedMode_ && playing_ && hasVfo;
     if(ready!=accept_)engine_.command("reset");
     accept_=ready;
-    if(watchdog_.check(ImGui::GetTime(),ready,engine_.snapshot().paused,inputBlocks_.load())){
+    if(watchdog_.check(ImGui::GetTime(),ready,cw.paused,inputBlocks_.load())){
         // Reconnect only this receive channel, never the source or another module.
         accept_=false;select(streamName_);accept_=ready;++reconnects_;
     }
@@ -145,6 +151,7 @@ void CWNotebook::openPath(const std::string& path,bool reveal){
     }
 }
 std::string CWNotebook::handleDebugCommand(const std::string& cmd,const std::string& args){
+    if(cmd=="pause"){pendingCWEnable_=args=="1"?0:1;return "{\"status\":\"queued\"}";}
     if(cmd=="rtty_listen"){
         try{
             size_t end=0;double mark=args.size()<=64?std::stod(args,&end):0;
@@ -159,27 +166,33 @@ std::string CWNotebook::handleDebugCommand(const std::string& cmd,const std::str
     if(cmd=="rtty_enable"){
         pendingRttyEnable_=args=="1"?1:0;return "{\"status\":\"queued\"}";
     }
+    if(cmd=="psk_enable"){pendingPskEnable_=args=="1"?1:0;return "{\"status\":\"queued\"}";}
+    if(cmd=="js8_enable"){pendingJs8Enable_=args=="1"?1:0;return "{\"status\":\"queued\"}";}
+    if(cmd=="olivia_enable"){pendingOliviaEnable_=args=="1"?1:0;return "{\"status\":\"queued\"}";}
     if(cmd=="rtty_close_all"){pendingRttyCloseAll_=true;return "{\"status\":\"queued\"}";}
-    if(cmd=="rtty_status"){
+    if(cmd=="rtty_status"||cmd=="digital_status"){
         auto s=std::atomic_load(&rttyStatus_);
         json stations=json::array(),signals=json::array();
         for(const auto& v:s->signals)signals.push_back({{"center",v.center},{"shift",v.shift},{"available",v.available},{"decoding",v.decoding},{"confirmed",v.confirmed}});
-        for(const auto& v:s->stations)stations.push_back({{"id",v.id},{"frequency",v.frequency},{"center",v.center},{"baud",v.baud},{"shift",v.shift},{"reverse",v.reverse},{"active",v.active},{"text",v.text},{"last_text_at",v.lastTextAt}});
-        return json{{"enabled",rttyEnabledView_.load()},{"receiving",s->receiving},{"priority_low",s->focus.low},{"priority_high",s->focus.high},{"priority_decoders",s->focusedDecoders},{"rate",s->rate},{"center",s->center},{"decoders",s->decoders},{"candidates",s->candidates},{"limited",s->limited},{"dropped",s->dropped},{"processing_ms",s->processingMs},{"error",s->error},{"stations",stations},{"signals",signals}}.dump();
+        for(const auto& v:s->stations){
+            const auto country=v.mode=="JS8"?radio::callsignCountry(v.call):radio::Country{};
+            stations.push_back({{"id",v.id},{"frequency",v.frequency},{"center",v.center},{"mode",rtty::modeName(v)},{"format",v.format},{"header_call",v.call},{"header_grid",v.grid},{"remote_report",v.remoteReport},{"baud",v.baud},{"shift",v.shift},{"reverse",v.reverse},{"active",v.active},{"rx_snr_db",v.snr},{"snr_current",v.currentSnr(v.active)},{"snr_measured_at",v.snrAt},{"country",country.name},{"country_flag",country.flag},{"snr_reference_hz",2500},{"text",v.text},{"last_text_at",v.lastTextAt},{"last_text_utc",v.lastTextUtc}});
+        }
+        return json{{"enabled",rttyEnabledView_.load()},{"psk_enabled",pskEnabledView_.load()},{"js8_enabled",js8EnabledView_.load()},{"olivia_enabled",oliviaEnabledView_.load()},{"receiving",s->receiving},{"priority_low",s->focus.low},{"priority_high",s->focus.high},{"priority_decoders",s->focusedDecoders},{"rate",s->rate},{"center",s->center},{"decoders",s->decoders},{"psk_decoders",s->pskDecoders},{"js8_windows",s->js8Decoders},{"olivia_decoders",s->oliviaDecoders},{"fec_dropped",s->fecDropped},{"fec_processing_ms",s->fecProcessingMs},{"candidates",s->candidates},{"limited",s->limited},{"dropped",s->dropped},{"processing_ms",s->processingMs},{"error",s->error},{"stations",stations},{"signals",signals}}.dump();
     }
     if(cmd=="status"){
         auto s=engine_.snapshot();return json{{"text",s.text},{"recovered_text",s.recoveredText},
             {"timing_recovery",s.timingRecovery},{"auto_retune",s.autoRetune},{"reconnects",reconnects_},
             {"input_blocks",inputBlocks_.load()},{"recovery_resets",s.recoveredDecoder.recoveries},
             {"filtered_glitches",s.recoveredDecoder.filteredGlitches},{"path",s.path},{"error",s.error},{"notice",s.notice},{"frequency",s.frequency},
-            {"wpm",s.decoder.wpm},{"tone",s.decoder.tone},{"calibrated",s.decoder.calibrated},{"signal",s.decoder.signal},
+            {"wpm",s.decoder.wpm},{"tone",s.decoder.tone},{"calibrated",s.decoder.calibrated},{"signal",s.decoder.signal},{"rx_snr_db",s.reception.snr},{"snr_current",s.reception.currentSnr(playing_&&!s.paused&&s.decoder.signal)},{"snr_measured_at",s.reception.snrAt},{"last_text_at",s.reception.lastTextAt},{"last_text_utc",s.reception.lastTextUtc},{"snr_reference_hz",2500},
             {"buffered_runs",s.decoder.bufferedRuns},{"recovery_buffered_runs",s.recoveredDecoder.bufferedRuns},
             {"extended_speed",s.extendedSpeed},
             {"provisional",s.decoder.provisional},{"provisional_wpm",s.decoder.provisionalWpm},
             {"bandwidth_hz",bandwidth_},{"follows_radio_bandwidth",followsBandwidth_},{"mode",mode_},
             {"channel_offset_hz",channelOffset_},{"sample_rate",sampleRate_.load()},
             {"carrier_offset_hz",channel_.carrierOffset(s.decoder.tone)},{"supported_mode",supportedMode_},
-            {"blocks",s.blocks},{"dropped",s.dropped},{"saved",s.saved},{"paused",s.paused},{"autosave",s.autosave},
+            {"blocks",s.blocks},{"dropped",s.dropped},{"saved",s.saved},{"paused",s.paused},{"pause_revision",s.pauseRevision},{"cw_enabled",cwEnabledView_.load()},{"autosave",s.autosave},
             {"level",s.decoder.level},{"threshold",s.decoder.threshold},{"contrast_db",s.decoder.snr},{"input","IQ"},{"version",CW_VERSION_STRING},{"host",cw::host::name},
             {"manual_wpm",s.manualWpm},{"manual_tone",s.manualTone},{"am_audio",s.amAudio}}.dump();
     }

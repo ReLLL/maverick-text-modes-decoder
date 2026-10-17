@@ -2,11 +2,27 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 #include <imgui.h>
+#include <string_view>
 
 namespace notebook {
 void closePopups();
 inline const ImVec4 text{.92f,.91f,.87f,1},muted{.66f,.68f,.67f,1};
 inline const ImVec4 brass{.84f,.71f,.44f,1},receiving{.51f,.79f,.63f,1};
+inline ImVec4 modeColor(std::string_view mode){
+    if(mode=="RTTY")return {.42f,.66f,.90f,1};
+    if(mode=="PSK31")return {.34f,.77f,.67f,1};
+    if(mode=="PSK63")return {.47f,.72f,.83f,1};
+    if(mode=="JS8")return {.74f,.60f,.87f,1};
+    if(mode=="Olivia")return {.91f,.61f,.41f,1};
+    return brass;
+}
+inline bool beginModeTab(const char* title,bool* open,ImGuiTabItemFlags flags,std::string_view mode){
+    const auto c=modeColor(mode);
+    auto tint=[&](float amount){return ImVec4{.07f+c.x*amount,.08f+c.y*amount,.084f+c.z*amount,1};};
+    ImGui::PushStyleColor(ImGuiCol_Tab,tint(.16f));ImGui::PushStyleColor(ImGuiCol_TabActive,tint(.40f));
+    ImGui::PushStyleColor(ImGuiCol_TabHovered,tint(.52f));
+    const bool selected=ImGui::BeginTabItem(title,open,flags);ImGui::PopStyleColor(3);return selected;
+}
 inline void hint(const char* text){
     if(ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)){
         ImGui::BeginTooltip();ImGui::PushTextWrapPos(ImGui::GetFontSize()*29);
@@ -21,8 +37,8 @@ inline void tabActivity(bool recent){
     draw->AddCircleFilled({min.x+ImGui::GetStyle().FramePadding.x+3.5f,(min.y+max.y)/2},3.5f,
         ImGui::GetColorU32(recent?ImVec4{.28f,.86f,.39f,1}:ImVec4{.98f,.78f,.20f,1}),12);
     draw->PopClipRect();
-    hint(recent?"Green: RTTY was received within the last minute. Each new burst restarts the minute. Select this tab to read it; Radio tuning stays unchanged.":
-        "Yellow: no confirmed RTTY activity in the last minute. New reception turns this green again. Select this tab to read its received text.");
+    hint(recent?"Green: confirmed digital activity within the last minute. Each new burst restarts the minute. Select this tab to read it; Radio tuning stays unchanged.":
+        "Yellow: no confirmed activity in the last minute. New reception turns this green again. Select this tab to read its received text.");
 }
 inline float statusHeight(){return ImGui::GetTextLineHeight()+8;}
 // Draw directly against the window edges. Changing text never adds layout rows.

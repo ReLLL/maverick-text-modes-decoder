@@ -1,6 +1,7 @@
 // Copyright (c) 2026 ReLLL and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "decoder.h"
+#include "signal_metrics.h"
 #include <algorithm>
 #include <cmath>
 #include <numeric>
@@ -235,7 +236,6 @@ void Decoder::process(const float* mono,size_t count,int rate) {
     }
 }
 void Decoder::findTone() {
-    if(manualTone_>0) {stats_.tone=manualTone_;stats_.signal=true;return;}
     const size_t length=analysisRate_/4000*1024;
     const int processingRate=analysisRate_;
     std::array<std::complex<float>,16384> fft;
@@ -262,8 +262,12 @@ void Decoder::findTone() {
         if(std::abs(i-int(best))>3)local.push_back(std::norm(fft[i]));
     std::sort(local.begin(),local.end());
     floor=std::max(floor,local[local.size()/2]);
+    const double measuredTone=manualTone_>0?manualTone_:double(best)*processingRate/length;
+    stats_.snrDb=radio::spectralSnr(int(length/2),double(processingRate)/length,measuredTone*length/processingRate,100,[&](int b){return std::norm(fft[b]);},false);
+    if(manualTone_>0){stats_.tone=manualTone_;stats_.signal=true;stats_.reception.observeSnr(stats_.snrDb);return;}
     stats_.snr=10*std::log10((peak+1e-15f)/(floor+1e-15f));
     stats_.signal=stats_.snr>13 && peak>1e-10;
+    if(stats_.signal)stats_.reception.observeSnr(stats_.snrDb);
     if(stats_.signal) {
         float a=std::abs(fft[best-1]),b=std::abs(fft[best]),c=std::abs(fft[best+1]);
         float offset=.5f*(a-c)/(a-2*b+c-1e-20f);

@@ -37,5 +37,18 @@ int main(){try{
     station.text=std::string(20000,'X');
     if(cw::browserHandoff(0,rtty::analysisPrompt(station,capture,false,c.timestamp)).prefilled)
         throw std::runtime_error("Long RTTY prompt bypassed clipboard fallback");
+    station.psk=true;station.baud=62.5;station.shift=0;station.text="CQ HELLO RYRYRYRYRYRYRYRY";
+    auto pskPrompt=rtty::analysisPrompt(station,capture,true,c.timestamp,"KM69");
+    for(const char* wanted:{"PSK63 / BPSK ASCII Varicode","62.50 baud","estimated carrier","CQ HELLO RYRYRYRYRYRYRYRY","KM69"})
+        if(pskPrompt.find(wanted)==std::string::npos)throw std::runtime_error("PSK analysis omitted mode, metadata or literal text");
+    for(const char* unwanted:{"ITA2","RTTY","Pair center:","Polarity:","Shift:","[RY test pattern]"})
+        if(pskPrompt.find(unwanted)!=std::string::npos)throw std::runtime_error("PSK analysis used RTTY fields or compaction");
+    station.psk=false;station.mode="JS8";station.format="JS8 Normal";station.shift=rtty::js8Target;
+    station.call="K1ABC";station.grid="FN42";station.remoteReport="+05";station.snr=-14.2;station.active=true;
+    auto fecPrompt=rtty::analysisPrompt(station,capture,true,c.timestamp);
+    for(const char* wanted:{"JS8 Normal","K1ABC","FN42","Remote report:","+05","-14.2 dB","2500 Hz","not instructions"})
+        if(fecPrompt.find(wanted)==std::string::npos)throw std::runtime_error("FEC prompt omitted header metadata or local SNR");
+    for(const char* unwanted:{"ITA2","Polarity:","Shift:","[RY test pattern]"})if(fecPrompt.find(unwanted)!=std::string::npos)throw std::runtime_error("FEC report used RTTY fields");
+    c.snr=-3.5;auto cwSnr=cw::analysisPrompt(text,c);if(cwSnr.find("-3.5 dB")==std::string::npos||cwSnr.find("2500 Hz")==std::string::npos)throw std::runtime_error("CW SNR context missing");
     std::cout<<"Analysis context, original text, provider links and long-prompt fallback passed\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

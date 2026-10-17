@@ -45,8 +45,10 @@ void Engine::selection(Selection selection){
     std::lock_guard<std::mutex> lock(mutex_);selection_=validated(std::move(selection));wake_.notify_one();
 }
 void Engine::focus(Focus focus){std::lock_guard<std::mutex> lock(mutex_);focus_=focus.valid()?focus:Focus{};wake_.notify_one();}
+void Engine::modes(bool rtty,bool psk){std::lock_guard<std::mutex> lock(mutex_);modes_={{rtty,psk}};wake_.notify_one();}
+void Engine::fecModes(bool js8,bool olivia){std::lock_guard<std::mutex> lock(mutex_);fecModes_={{js8,olivia}};wake_.notify_one();}
 void Engine::publish(const std::string& error,bool receiving){
-    auto status=skimmer_.snapshot();status.dropped=dropped_;status.processingMs=processingMs_;status.error=error;
+    auto status=skimmer_.snapshot();status.dropped=dropped_;status.processingMs=processingMs_;if(!error.empty())status.error=error;
     status.receiving=receiving;
     std::atomic_store(&view_,std::shared_ptr<const Status>(std::make_shared<Status>(std::move(status))));
 }
@@ -56,15 +58,17 @@ void Engine::work(){
     std::string failure;
     auto published=std::chrono::steady_clock::now();
     while(true){
-        double rate,center;bool receiving,reset,clear;std::vector<uint64_t> closes;std::optional<Selection> selection;std::optional<Focus> focus;
+        double rate,center;bool receiving,reset,clear;std::vector<uint64_t> closes;std::optional<Selection> selection;std::optional<Focus> focus;std::optional<std::pair<bool,bool>> modes,fecModes;
         {
             std::unique_lock<std::mutex> lock(mutex_);
-            wake_.wait(lock,[&]{return stop_||pending_||generation_!=generation||!closes_.empty()||clear_||selection_.has_value()||focus_.has_value();});
+            wake_.wait(lock,[&]{return stop_||pending_||generation_!=generation||!closes_.empty()||clear_||selection_.has_value()||focus_.has_value()||modes_.has_value()||fecModes_.has_value();});
             if(stop_)break;
             rate=rate_;center=center_;receiving=receiving_;closes.swap(closes_);clear=clear_;clear_=false;
             reset=generation_!=generation;generation=generation_;
             selection.swap(selection_);
             focus.swap(focus_);
+            modes.swap(modes_);
+            fecModes.swap(fecModes_);
             packet.count=0;
             if(pending_){std::swap(packet,pool_[read_]);read_=(read_+1)%poolSize;--pending_;samples_-=packet.count;}
         }
@@ -73,6 +77,8 @@ void Engine::work(){
             if(clear)skimmer_.closeAll();
             if(selection)skimmer_.selection(std::move(*selection));
             if(focus)skimmer_.focus(*focus);
+            if(modes)skimmer_.modes(modes->first,modes->second);
+            if(fecModes)skimmer_.fecModes(fecModes->first,fecModes->second);
             for(auto id:closes)skimmer_.close(id);
             if(packet.count&&gaps!=packet.gaps){gaps=packet.gaps;skimmer_.discontinuity();}
             if(receiving&&packet.count&&packet.generation==generation){
@@ -80,7 +86,7 @@ void Engine::work(){
                 processingMs_+=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-start).count();
             }
             auto now=std::chrono::steady_clock::now();
-            if(now-published>=std::chrono::milliseconds(250)||!closes.empty()||!receiving||reset||clear||selection||focus){publish(failure,receiving);published=now;}
+            if(now-published>=std::chrono::milliseconds(250)||!closes.empty()||!receiving||reset||clear||selection||focus||modes||fecModes){publish(failure,receiving);published=now;}
         }catch(const std::exception& e){
             failure=e.what();skimmer_.discontinuity();publish(failure);
             std::lock_guard<std::mutex> lock(mutex_);failed_=true;receiving_=false;pending_=samples_=read_=write_=0;

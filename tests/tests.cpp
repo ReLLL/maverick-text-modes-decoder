@@ -136,8 +136,19 @@ void testEngine(){
             engine.audio(std::vector<float>(samples.begin()+i,samples.begin()+std::min(i+200,samples.size())),8000,6606960);
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
-        waitFor(engine,[](const auto& x){return x.text.find("DE 4XZ TEST 123")!=std::string::npos;});
-        engine.command("pause","1");waitFor(engine,[](const auto& x){return x.paused;});
+        s=waitFor(engine,[](const auto& x){return x.text.find("DE 4XZ TEST 123")!=std::string::npos;});
+        const auto measured=s.reception;
+        require(std::isfinite(measured.snr)&&measured.snrAt>0&&measured.lastTextAt>0&&measured.lastTextUtc>0,"CW reception metadata was never populated");
+        engine.command("pause","1");s=waitFor(engine,[](const auto& x){return x.paused&&x.pauseRevision==1;});
+        require(s.reception.snr==measured.snr&&s.reception.lastTextUtc==measured.lastTextUtc,"CW pause erased retained SNR or refreshed received time");
+        auto pausedText=s.text;auto pausedBlocks=s.blocks;
+        engine.audio(audio("EE",20,8000,800),8000,6606960);
+        s=waitFor(engine,[&](const auto& x){return x.blocks>pausedBlocks;});
+        require(s.paused&&s.text==pausedText&&s.decoder.bufferedRuns==0&&s.recoveredDecoder.bufferedRuns==0,"Paused CW decoded or kept learning");
+        engine.command("pause","0");s=waitFor(engine,[](const auto& x){return !x.paused&&x.pauseRevision==2;});
+        require(s.text==pausedText&&!s.decoder.calibrated&&s.decoder.bufferedRuns==0,"CW resume lost text or reused old timing");
+        require(s.reception.snr==measured.snr&&s.reception.lastTextUtc==measured.lastTextUtc,"CW resume erased held metadata before new reception");
+        engine.command("pause","1");waitFor(engine,[](const auto& x){return x.paused&&x.pauseRevision==3;});
         // Failed archival must keep the transcript, including its held UI view.
         auto retained=engine.snapshot().text;
         std::filesystem::rename(log,dir/"retained.md");

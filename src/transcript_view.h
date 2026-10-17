@@ -4,6 +4,7 @@
 #include <imgui.h>
 #include <string>
 #include <vector>
+#include <limits>
 namespace rtty {struct Station;struct Status;}
 
 // GUI-thread-only view. Selection and scrolling never pause incoming text.
@@ -12,7 +13,7 @@ public:
     void draw(const std::string& text, float height, float scale, bool& follow);
     void clear();
     void copyAll(const std::string& text);
-    void copyReport(double frequency, float wpm, float carrierOffset, bool manualSpeed,bool recovered=false,const std::string* currentText=nullptr);
+    void copyReport(double frequency, float wpm, float carrierOffset, bool manualSpeed,bool recovered=false,const std::string* currentText=nullptr,double snr=std::numeric_limits<double>::quiet_NaN(),bool snrLast=false,double lastReceivedUtc=0);
     void copyRTTYReport(const rtty::Station& station,const rtty::Status& capture,bool compact);
     bool popupOpen() const { return popupOpen_; }
     void hidden(){popupOpen_=false;}

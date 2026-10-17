@@ -1,6 +1,7 @@
 // Copyright (c) 2026 ReLLL and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "ai_handoff.h"
+#include "reception.h"
 #include <cmath>
 #include <iomanip>
 #include <locale>
@@ -42,6 +43,9 @@ std::string analysisPrompt(const std::string& text,const AnalysisContext& c){
        <<"Carrier offset: ";
     if(std::isfinite(c.carrierOffset))out<<std::showpos<<std::setprecision(0)<<c.carrierOffset<<std::noshowpos<<" Hz\n";
     else out<<"Unavailable for AM audio-tone input\n";
+    if(c.lastReceivedUtc>0)out<<"Last received: "<<radio::receptionTimestamp(c.lastReceivedUtc)<<'\n';
+    if(std::isfinite(c.snr))out<<"RX SNR: "<<std::showpos<<std::setprecision(1)<<c.snr<<std::noshowpos<<" dB ("<<(c.snrLast?"last valid measurement; ":"")<<"estimated here; 2500 Hz reference)\n";
+    else out<<"RX SNR: Unavailable\n";
     out<<"Version: "<<(c.recovered?"Timing + fade recovery (unverified)":"Original decode")
        <<"\n\nBEGIN RECEIVED TRANSCRIPT\n"<<text<<"\nEND RECEIVED TRANSCRIPT\n";
     return out.str();

@@ -1,6 +1,7 @@
 // Copyright (c) 2026 ReLLL and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "transcript_view.h"
+#include "reception.h"
 #include "notebook_style.h"
 #include "rtty_report.h"
 #include <imgui_internal.h>
@@ -21,9 +22,10 @@ void TranscriptView::copied(const std::string& text,const char* kind){
 }
 void TranscriptView::copyAll(const std::string& text){copied(text,"all text");}
 void TranscriptView::copyRTTYReport(const rtty::Station& station,const rtty::Status& capture,bool compact){
-    copied(rtty::receptionReport(station,capture,compact,std::time(nullptr)),"RTTY reception details and displayed text");
+    const auto kind=std::string(rtty::modeName(station))+" reception details and displayed text";
+    copied(rtty::receptionReport(station,capture,compact,std::time(nullptr)),kind.c_str());
 }
-void TranscriptView::copyReport(double frequency,float wpm,float carrierOffset,bool manualSpeed,bool recovered,const std::string* currentText){
+void TranscriptView::copyReport(double frequency,float wpm,float carrierOffset,bool manualSpeed,bool recovered,const std::string* currentText,double snr,bool snrLast,double lastReceivedUtc){
     const auto& text=currentText?*currentText:source_;
     const auto now=std::time(nullptr);
     std::tm local{};
@@ -43,6 +45,9 @@ void TranscriptView::copyReport(double frequency,float wpm,float carrierOffset,b
           <<"Carrier offset: ";
     if(std::isfinite(carrierOffset))report<<std::showpos<<std::setprecision(0)<<carrierOffset<<std::noshowpos<<" Hz";
     else report<<"Unavailable (AM audio tone)";
+    if(lastReceivedUtc>0)report<<"\nLast received:  "<<radio::receptionTimestamp(lastReceivedUtc);
+    if(std::isfinite(snr))report<<"\nRX SNR:         "<<std::showpos<<std::setprecision(1)<<snr<<std::noshowpos<<" dB ("<<(snrLast?"last valid measurement; ":"")<<"estimated here; 2500 Hz reference)";
+    else report<<"\nRX SNR:         Unavailable";
     report<<"\n\n"<<(recovered?"Timing + fade recovery (unverified)":"Original decode")<<"\n-------------\n"<<text;
     if(text.empty() || text.back()!='\n')report<<'\n';
     copied(report.str(),"reception details and displayed text");

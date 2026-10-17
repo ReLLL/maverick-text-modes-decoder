@@ -10,6 +10,8 @@ public:
     RttyReceiver();
     ~RttyReceiver();
     void enabled(bool enabled);
+    void modes(bool rtty,bool psk){engine_.modes(rtty,psk);}
+    void fecModes(bool js8,bool olivia){engine_.fecModes(js8,olivia);}
     void configure(double rate,double center,bool playing);
     std::shared_ptr<const rtty::Status> snapshot() const{return engine_.snapshot();}
     void close(uint64_t id){engine_.close(id);}

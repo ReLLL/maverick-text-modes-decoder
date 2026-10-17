@@ -1,21 +1,39 @@
 # CW Notebook for SDR++Brown and SDR++
 
-Decode one CW/Morse signal into a selectable transcript and recoverable Markdown log, alongside simultaneous RTTY streams in frequency tabs across the captured spectrum. Maintained by [ReLLL](https://github.com/ReLLL). Free and open source under GPL-3.0-or-later.
+Local 1.0.45 makes the CW tab closable. Its X and the CW checkbox control the
+same receiver state. Off stops CW reception and learning; on reopens the tab
+with fresh timing acquisition. Confirmed text and logs are kept.
+
+Local 1.0.44 candidate adds JS8 at all five speeds, seven common Olivia formats
+and received SNR for CW/RTTY/PSK and the new modes. JS8 header callsigns, grids
+and remote reports appear above the text when present. All native modes default
+on, with independent saved controls. FEC uses one bounded background worker;
+the wide spectrum FFT stays shared. See [FEC modes, metadata and limits](docs/fec-modes.md).
+
+The unpublished 1.0.43 PSK addition remains included: BPSK31/63 shares the RTTY capture and wide
+FFT, with independent control, frequency tabs, tuned-passband priority,
+pins/ignores, metadata copying and Explain with AI. PSK adds eight bounded
+decoder slots alongside RTTY's 16; both share 32 retained tabs.
+See [PSK operation and limits](docs/psk.md). Public release remains 1.0.42.
+
+Decode one CW/Morse signal into a selectable transcript and recoverable Markdown log, alongside RTTY, BPSK31/63, JS8 and Olivia streams in frequency tabs across the captured spectrum. Maintained by [ReLLL](https://github.com/ReLLL). Free and open source under GPL-3.0-or-later.
 
 If the transcript is hidden or outside the visible area, use **Bring CW Notebook to front** in the sidebar. The window returns centered and in front without interrupting reception. Disabling and re-enabling also reopens it.
 
 ## Features
 
 - Full-capture RTTY discovery and simultaneous frequency tabs, with automatic priority for Radio's tuned passband, manual pins/ignores, up to 16 decoders and 32 retained tabs.
+- BPSK31/63, all five JS8 speeds and seven Olivia formats share that spectrum scan. Bounded decoder slots protect responsiveness; pins and Signals controls help select wanted streams when the band is crowded.
+- Estimated local RX SNR for CW and every digital mode, with JS8 protocol header callsigns, grids and remote reports when present.
 - Automatic timing defaults to 5-45 WPM, with an optional 3-200 WPM range and manual speed/carrier controls.
 - Key and gap durations are held during learning and replayed when timing becomes usable. Long buffers spill to a temporary file instead of dropping their beginning.
 - Speed learning uses the latest 16 marks and recent gaps. Poor evidence leaves timing unchanged; sustained, strongly supported new timing can correct a mistaken automatic speed lock. Manual speed stays fixed.
 - Provisional letters appear after two seconds of detected keying and update as timing improves. The labeled draft is replaced by confirmed replay; only confirmed text is autosaved.
-- CW, USB, LSB, DSB and AM reception follows Radio's full selected passband. AM offers keyed RF carriers or Morse audio tones. Only CW and received RTTY streams use tabs; CW Settings and How to use open as modals.
+- CW, USB, LSB, DSB and AM reception follows Radio's full selected passband. AM offers keyed RF carriers or Morse audio tones. CW and received digital streams use tabs; CW Settings and How to use open as modals.
 - Readable, resizable text; selection, Cmd+C, and right-click Copy selection / Copy all.
 - **Copy to clipboard** exports the displayed transcript with local SQL-style date/time, weekday, UTC offset, current frequency, speed, and carrier offset.
 - **Explain with AI...** opens ChatGPT, Claude or Gemini in the default browser with an analysis prompt and reception context. The complete prompt is copied for every provider; Gemini and long transcripts require pasting.
-- RTTY frequency tabs offer their own **Explain with AI...** button, using that tab's displayed compact/original text and RTTY metadata, including baud, shift and polarity.
+- Digital frequency tabs offer their own **Explain with AI...** button, using that tab's received text and mode metadata. RTTY includes baud, shift and polarity; JS8 includes received header fields.
 - Markdown autosave, rename, new log, Finder reveal, and one-click clear with a dated backup.
 - Select and scroll while incoming text continues; plugin gestures do not retune the waterfall.
 - No extra blank pages during silence or silent tuning.
@@ -135,7 +153,9 @@ resumes the existing decoder while retaining its text and log. RTTY scans
 the captured RF spectrum and opens confirmed streams in frequency tabs, without
 changing Radio's tuning, mode, filter or audio. All eligible pairs inside Radio's
 current filter get first priority automatically, while the rest of the captured
-band keeps scanning. CW stays in its own permanent tab.
+band keeps scanning. Closing the CW tab's X turns CW off and stops its private
+receive channel and timing learning. Turn **CW** on to reopen the tab and
+restart acquisition; its confirmed text and Markdown log are retained.
 New tabs keep your current focus. A filled circle before the frequency is green
 for one minute after confirmed activity, then yellow. Every returning burst
 restarts the minute; the trailing dot marks

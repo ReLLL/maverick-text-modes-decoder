@@ -15,9 +15,10 @@ struct Snapshot {
     DecoderStats decoder;
     std::string text, recoveredText, path, error, notice;
     DecoderStats recoveredDecoder;
+    radio::Reception reception,recoveredReception;
     bool timingRecovery=true, autoRetune=true, extendedSpeed=false,amAudio=false;
     double frequency=0;
-    uint64_t blocks=0, dropped=0, saved=0, transcriptReset=0;
+    uint64_t blocks=0, dropped=0, saved=0, transcriptReset=0, pauseRevision=0;
     bool paused=false, autosave=true;
     float manualWpm=0, manualTone=0;
 };
@@ -56,6 +57,7 @@ private:
     std::deque<Segment> pending_;
     size_t unsavedBytes_=0;
     bool paused_=false,autoSave_=true,transcriptBreakPending_=false;
+    uint64_t pauseRevision_=0;
     bool discardCurrentPacket_=false;
     bool preferencesDirty_=false;
     bool timingRecovery_=true,autoRetune_=true,recoveredBreakPending_=false;
@@ -64,6 +66,7 @@ private:
     bool amAudio_=false;
     float manualWpm_=0,manualTone_=0;
     double frequency_=0;
+    radio::Reception reception_,recoveredReception_;
     int rate_=0;
     uint64_t lastGeneration_=0,blocks_=0,saved_=0;
     std::ofstream diagnostic_;

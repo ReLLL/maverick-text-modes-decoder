@@ -24,6 +24,8 @@ public:
     void closeAll();
     void selection(Selection selection);
     void focus(Focus focus);
+    void modes(bool rtty,bool psk);
+    void fecModes(bool js8,bool olivia);
 private:
     struct Packet {std::vector<IQ> data;size_t count=0;uint64_t generation=0,gaps=0;};
     void work();
@@ -38,6 +40,8 @@ private:
     std::vector<uint64_t> closes_;
     std::optional<Selection> selection_;
     std::optional<Focus> focus_;
+    std::optional<std::pair<bool,bool>> modes_;
+    std::optional<std::pair<bool,bool>> fecModes_;
     std::atomic<uint64_t> dropped_{0},gaps_{0};
     std::shared_ptr<const Status> view_=std::make_shared<const Status>();
     Skimmer skimmer_;

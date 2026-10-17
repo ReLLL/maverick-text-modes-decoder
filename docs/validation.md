@@ -4,6 +4,152 @@ read_when: Changing thresholds, supported ranges, compatibility, or reliability 
 
 # Validation
 
+## Local 1.0.46 reception metadata checkpoint, 2026-10-17
+
+The inactive-report SNR regression fails before the fix and passes afterward.
+Metadata checks cover NaN/infinity rejection, zero dB, current/held labels,
+the 119/120-second age boundary, portable calls, exact-call exceptions,
+unknown/maritime calls and copied report provenance. CW worker checks retain
+SNR and received time across pause/resume. Both matching host UI suites pass
+the colored SNR/age rendering and existing tab close/reopen checks.
+
+The earlier JS8 Ultra flake reproduced in five of 30 repeated all-mode trials.
+Thirty Ultra-only trials passed. Synchronization reads four trailing spectral
+columns whose FFT windows exceed the input and were never initialized.
+Zeroing these unused columns produced 150 successful decodes over 30 repeated
+five-mode trials. Thirteen core targets and five installer checks pass.
+Native metadata validation is still pending at this checkpoint; the installed
+receiver remains 1.0.45.
+
+## Local 1.0.45 CW tab lifecycle, 2026-10-17
+
+Twelve core targets and five installer checks pass. Both matching host modules
+build, and both real-ImGui suites exercise the production CW tab close button,
+reopening, rapid off/on requests, stale worker snapshots and automatic safety
+pauses. The changed CW worker and standard-host UI also pass ASan/UBSan.
+One initial unchanged JS8 Ultra fixture failed; the complete rerun passed.
+The intermittent failure's cause remains unresolved; this patch changes no FEC
+decoder thresholds.
+
+An isolated native Brown replay verifies that the tab X disables CW, clears
+learning state and stops its private channel input counter. Confirmed text
+stays intact while RTTY, PSK31 and PSK63 continue receiving. Close all leaves CW
+disabled. Re-enabling the checkbox selects CW, retains its text, resumes input
+and reacquires the fixture's 20 WPM timing. The toolbar and help no longer
+advertise the removed proprietary modem integration.
+
+The tested 1.0.45 binary is installed outside Brown's app bundle. Normal RTL-SDR
+reception resumed with all native modes enabled and HTTP off. All 34 saved CW
+log prefixes retain their hashes. Installer backups preserve the prior binary
+and configuration. Public release remains 1.0.42; this update is unpublished.
+Brown clamped Radio's saved offset during startup. Moving the capture center
+40.145 kHz lower and using a -280 kHz offset restored the saved 6958.000 kHz
+dial without changing source, rate, gain, decimation, mode or filter. This is
+a local profile adjustment, not a change to Brown or a plugin tuning policy.
+Both local 1.0.45 archives contain the matching host binary/manifest and the
+11-file public allowlist, with no project instructions or private build paths.
+
+## Local 1.0.44 JS8/Olivia candidate, 2026-10-17
+
+Twelve portable core targets, five installer checks, twelve ASan/UBSan targets
+and both matching real-ImGui transcript suites pass. Both host modules build
+for arm64, minimum macOS 15.0. The existing CW/RTTY/PSK regression checks remain
+included. No on-air sensitivity or long-soak claim follows from these fixtures.
+
+JS8 encoding matches frozen normal/modified Costas tone sequences generated
+independently by the original JS8Call Fortran/Boost CRC implementation. All five
+receive speeds unpack reference text. A noisy weak normal-speed fixture decodes
+the received K1ABC/FN42 header; noise alone does not qualify. All seven Olivia
+formats decode their generated reference text with the correct format.
+Separate Gaussian noise, carrier and RTTY interference fixtures do not qualify
+as Olivia. SNR tests check the 2500 Hz reference, a tenfold power increase and
+unavailable capture-edge measurements. A discovery regression prevents strong
+narrow carriers with broad FFT skirts from monopolizing Olivia probes.
+
+The integrated 90-second IQ fixture decodes JS8 and Olivia together without
+FEC packet loss or an aliased duplicate JS8 tab. Disabling both releases their
+slots and retains text; Close all removes it. One measured Release run used
+10.1 total CPU seconds, including 9.65 FEC worker seconds, for 90 seconds of
+input. Seven separate Olivia format trials used 0.82-1.07 CPU seconds each for
+100 seconds of audio. These are local workload measurements, not total
+receiver CPU guarantees or a calibrated sensitivity comparison.
+
+An isolated, real-time Brown replay at 96 kS/s decoded CW, 200 Hz RTTY, PSK31,
+PSK63, JS8 Normal and Olivia 8/250 concurrently. One JS8 tab appeared at the
+reference RF frequency, with received K1ABC/FN42 header fields. Every mode
+reported finite local RX SNR during reception. At about 116 seconds, no IQ/FEC
+packets had dropped and the FEC worker had used 9.17 CPU seconds. Later replay
+wrap/stop activity reported IQ discontinuities; FEC loss remained zero. Native
+Olivia text, format, activity, header placeholders, clipboard report and AI
+provider menu were checked. No provider was selected and no received text was
+sent. Turning Olivia off released its slots while keeping text and other modes.
+
+An earlier integration run exposed an out-of-bounds lookup in the vendored
+Olivia synchronization noise metric. The receiver now selects the noise value
+for the actual best phase/frequency; full memory checks pass with that fix.
+Strong synchronization scores are capped rather than discarded. Format
+selection requires a sustained winner, varied text and valid recent controls.
+The replay generator also uses double-precision oscillators to avoid creating
+artificial carriers through float phase quantization.
+
+JS8 SNR comes from
+its decoder and has not been calibrated against the spectral estimates used
+by the other modes. Header fields are received claims, not verified identities.
+Public release remains 1.0.42; this candidate is unpublished.
+
+The final local 1.0.44 module is installed outside Brown's app bundle and
+matches the tested binary. Normal-profile reception is running with CW, RTTY,
+PSK, JS8 and Olivia enabled. HTTP is off. Source, gain, decimation, receiver
+location, time correction and stream settings match their pre-update values;
+the user's subsequent live tuning is retained. All 33 existing CW log prefixes
+match their recorded hashes. Four still-open RTTY reports were exported before
+restart. Installer backups retain the prior plugin and configuration. Both
+local archives pass explicit allowlist, binary, manifest, architecture,
+minimum-OS and private-path checks. Project AGENTS.md stays ignored.
+
+## Local 1.0.43 PSK candidate, 2026-10-17
+
+Ten portable core targets, five installer tests, ten ASan/UBSan targets and
+both matching real-ImGui suites pass. Both host modules build. PSK fixtures
+use an independently transcribed Varicode reference and cosine phase reversals.
+Checks cover both rates, arbitrary mid-transmission joins, carrier offsets,
+800 ppm clock error in both directions, conjugated IQ, fading/noise, rejection
+of silence/carriers/keying/repeated characters, mixed RTTY/PSK, priority under
+capacity pressure, ignore/only-pinned selection, gaps, retunes and 32-tab limits.
+Common-window tests cover reference boundaries, hard-priority protection and
+access for ordinary full-capture candidates when common windows are crowded.
+
+For two PSK streams over 16 seconds of generated IQ, the final Release test
+measured 0.029 CPU seconds at 96 kS/s, 0.185 at 1.024 MS/s and 0.675 at
+4.096 MS/s. These timings exclude waveform generation, host UI and stream
+copies; they are local measurements, not a total receiver CPU guarantee.
+Eight crowded channels at 96 kS/s took 0.154 CPU seconds including generation.
+PSK shares the existing raw queue, worker and wide FFT; RTTY retains 16 slots
+and PSK has eight. Full-spectrum discovery runs at most eight times per second.
+
+Isolated, paced Brown replay decoded RTTY, PSK31 and PSK63 concurrently with
+zero dropped IQ packets. Native PSK tabs displayed the received reference text,
+green activity, Copy to clipboard, Follow PSK and the AI provider menu. The
+menu was dismissed without selecting a provider. Report tests verify PSK
+carrier/baud metadata and preserve literal RY text. Synthetic replay establishes
+controlled behavior; on-air sensitivity, error rate and long-soak stability
+remain unmeasured. QPSK, PSK63F and extended character sets are unsupported.
+
+The final common-window build also decoded all three streams in Brown replay;
+one queue gap was reported during that run. Turning PSK off released its four
+candidate slots while retaining both PSK tabs and continuing RTTY decoding.
+The native checkbox and remembered setting agreed. The gap-free result above
+belongs to the earlier paced run; it is not a claim that queue gaps never occur.
+
+Brown now runs the local 1.0.43 candidate from its normal profile, with CW,
+RTTY and PSK enabled and reception resumed at the previous 7.116 MHz LSB,
+3300 Hz filter. HTTP remains off. The installed module matches the tested build.
+All 33 pre-update CW log prefixes match their recorded hashes; saved frequency,
+gain, source, decimation and signal choices are unchanged. Installer backups
+contain the prior plugin and configuration. Both local host archives passed
+allowlist, binary, manifest, dependency and private-path checks. Public release
+remains 1.0.42; the PSK candidate has not been committed or published.
+
 ## 1.0.42 RTTY AI handoff, 2026-10-17
 
 All nine core targets, five installer tests, nine ASan/UBSan targets and both

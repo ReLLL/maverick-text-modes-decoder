@@ -56,8 +56,9 @@ int main(){try{
         require(report.find(expected)!=std::string::npos,"RTTY report omitted reception metadata or displayed text");
     const auto original=rtty::receptionReport(station,capture,false,1792108800);
     require(original.find(raw)!=std::string::npos&&original.find("Original received text")!=std::string::npos,"Original report did not preserve received text");
-    station.frequency=7645780;station.active=false;
+    station.frequency=7645780;station.active=false;station.snr=-14.2;
     const auto outside=rtty::receptionReport(station,capture,false,1792108800);
     require(outside.find("HF (outside listed Region 1 amateur ranges)")!=std::string::npos&&outside.find("Inactive")!=std::string::npos,"Report mislabeled an out-of-band/inactive reception");
+    require(outside.find("-14.2 dB")!=std::string::npos,"Inactive tab discarded its last valid RX SNR");
     std::cout<<"Stable signal selection checks passed\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

@@ -3,12 +3,21 @@
 #include "plugin.h"
 #include "window_presentation.h"
 #include "notebook_style.h"
+#include "reception_view.h"
 #include <core.h>
 #include <cstdio>
+#include <cmath>
 
 namespace {
 const ImVec4 live=notebook::receiving,warning=notebook::brass,muted=notebook::muted;
 using notebook::hint;
+}
+void CWNotebook::setCWMonitoring(bool enabled){
+    cwTab_.request(enabled,engine_.snapshot().pauseRevision);cwEnabledView_=enabled;
+    if(enabled)selectCW_=true;
+    else {accept_=false;detach();}
+    engine_.command("pause",enabled?"0":"1");
+    metadata();
 }
 void CWNotebook::sidebar(){
     auto s=engine_.snapshot();
@@ -39,7 +48,8 @@ void CWNotebook::logControls(const cw::Snapshot& s){
     ImGui::SameLine();if(ImGui::Button("Copy to clipboard")){
         const auto& d=showRecovery_?s.recoveredDecoder:s.decoder;
         const auto text=cw::transcriptText(s,showRecovery_);
-        transcript_.copyReport(frequency_.load(),d.wpm,channel_.carrierOffset(d.tone),s.manualWpm>0,showRecovery_,&text);
+        const auto& rx=showRecovery_?s.recoveredReception:s.reception;
+        transcript_.copyReport(frequency_.load(),d.wpm,channel_.carrierOffset(d.tone),s.manualWpm>0,showRecovery_,&text,rx.snr,!rx.currentSnr(playing_&&!s.paused&&d.signal),rx.lastTextUtc);
     }
     hint("Copy the displayed version with date, weekday, frequency, speed and carrier offset.");
     ImGui::SameLine();if(ImGui::Button("Explain with AI..."))ImGui::OpenPopup("notebook_ai_actions");
@@ -151,6 +161,10 @@ void CWNotebook::cwStatus(const cw::Snapshot& s){
     notebook::flow(130);
     if(channel_.amAudio)ImGui::TextDisabled("AM tone %.0f Hz",d.tone);
     else ImGui::TextDisabled("Carrier %+.0f Hz",channel_.carrierOffset(d.tone));
+    notebook::flow(180);
+    const auto& rx=showRecovery_?s.recoveredReception:s.reception;
+    notebook::rxSnr(rx,playing_&&!s.paused&&d.signal);
+    notebook::lastReceived(rx);
     if(mode_=="AM"){
         ImGui::SetNextItemWidth(220);int input=s.amAudio?1:0;
         if(ImGui::Combo("AM input",&input,"Keyed RF carrier\0AM audio tones\0"))engine_.command("am_audio",input?"1":"0");
@@ -160,7 +174,12 @@ void CWNotebook::cwStatus(const cw::Snapshot& s){
         ImGui::TextColored(warning,"%llu intervals held | provisional text updates while learning",static_cast<unsigned long long>(d.bufferedRuns));
 }
 void CWNotebook::draw(){
+    const int cwRequest=pendingCWEnable_.exchange(-1);if(cwRequest>=0)setCWMonitoring(cwRequest==1);
+    const auto cwSnapshot=engine_.snapshot();cwTab_.sync(cwSnapshot.paused,cwSnapshot.pauseRevision);cwEnabledView_=cwTab_.enabled();
     const int request=pendingRttyEnable_.exchange(-1);
+    const int pskRequest=pendingPskEnable_.exchange(-1);if(pskRequest>=0)setPskMonitoring(pskRequest==1);
+    const int js8Request=pendingJs8Enable_.exchange(-1);if(js8Request>=0)setFecMonitoring(true,js8Request==1);
+    const int oliviaRequest=pendingOliviaEnable_.exchange(-1);if(oliviaRequest>=0)setFecMonitoring(false,oliviaRequest==1);
     if(request>=0)setRttyMonitoring(request!=0);
     const double listen=pendingRttyListen_.exchange(0);if(listen>0)listenRtty(listen);
     if(pendingRttyCloseAll_.exchange(false)&&rtty_){rtty_->closeAll();selectCW_=true;}
@@ -185,8 +204,9 @@ void CWNotebook::draw(){
     ImGui::BeginChild("notebook_content",{0,std::max(40.f,ImGui::GetContentRegionAvail().y-notebook::statusHeight()+ImGui::GetStyle().WindowPadding.y)},false);
     const float footer=ImGui::GetFrameHeightWithSpacing()*3+ImGui::GetTextLineHeightWithSpacing()+12+(renaming_?ImGui::GetFrameHeightWithSpacing():0);
     if(ImGui::BeginTabBar("notebook_pages",ImGuiTabBarFlags_Reorderable|ImGuiTabBarFlags_FittingPolicyScroll)){
-        const auto cwFlags=ImGuiTabItemFlags_Leading|(selectCW_?ImGuiTabItemFlags_SetSelected:0);
-        bool cwVisible=ImGui::BeginTabItem("CW",nullptr,cwFlags);selectCW_=false;
+        bool cwClosed=false;
+        bool cwVisible=cwTab_.begin(selectCW_,cwClosed);selectCW_=false;
+        if(cwClosed)setCWMonitoring(false);
         if(cwVisible){
             cwStatus(s);ImGui::Separator();
             ImGui::SetNextItemWidth(std::min(290.f,ImGui::GetContentRegionAvail().x*.4f));int version=showRecovery_?1:0;
@@ -205,6 +225,8 @@ void CWNotebook::draw(){
         rttyTabs(0);
         ImGui::EndTabBar();
     }
+    if(!cwTab_.open()&&rttyStatus_->stations.empty())
+        ImGui::TextDisabled("CW is off. Enable CW above to reopen its tab. Digital tabs open when text is received.");
     ImGui::EndChild();
     notebookModals(s);
     receiveStatus(s);

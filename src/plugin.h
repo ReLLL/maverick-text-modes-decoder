@@ -9,6 +9,9 @@
 #include "host_adapter.h"
 #include "rtty_receiver.h"
 #include "rtty_signal_list.h"
+#include "cw_tab.h"
+#include "country_lookup.h"
+#include "flag_textures.h"
 #include <map>
 #include <module.h>
 #include <gui/gui.h>
@@ -42,10 +45,15 @@ private:
     void logControls(const cw::Snapshot& s);
     void decoderControls(const cw::Snapshot& s);
     void cwStatus(const cw::Snapshot& s);
+    void setCWMonitoring(bool enabled);
     void rttyControls();
     void receiveStatus(const cw::Snapshot& s);
     void rttyTabs(float footer);
     void setRttyMonitoring(bool enabled);
+    void setPskMonitoring(bool enabled);
+    void setFecMonitoring(bool js8,bool enabled);
+    bool digitalEnabled() const{return rttyEnabled_||pskEnabled_||js8Enabled_||oliviaEnabled_;}
+    void syncDigitalMonitoring();
     void saveRttySelection();
     void pinRtty(double center,double shift,bool pin);
     void ignoreRtty(double center,double shift,bool ignore);
@@ -57,10 +65,20 @@ private:
     std::string name_,streamName_="Radio";
     cw::Engine engine_;
     std::unique_ptr<RttyReceiver> rtty_;
-    struct RttyView {TranscriptView transcript;bool follow=true,compact=true;std::string seen,rawCache,compactCache;};
+    struct RttyView {TranscriptView transcript;bool follow=true,compact=true;std::string seen,rawCache,compactCache,lastCall;radio::Country country;};
     std::map<uint64_t,RttyView> rttyViews_;
+    notebook::FlagTextures flags_;
     bool rttyEnabled_=false;
+    bool pskEnabled_=false;
+    bool js8Enabled_=false,oliviaEnabled_=false;
+    std::atomic<bool> js8EnabledView_{false},oliviaEnabledView_{false};
+    std::atomic<int> pendingJs8Enable_{-1},pendingOliviaEnable_{-1};
+    std::atomic<bool> pskEnabledView_{false};
+    std::atomic<int> pendingPskEnable_{-1};
     bool selectCW_=false;
+    notebook::CWTab cwTab_;
+    std::atomic<bool> cwEnabledView_{true};
+    std::atomic<int> pendingCWEnable_{-1};
     bool cwSettingsOpen_=false,helpOpen_=false,signalsOpen_=false;
     rtty::Selection rttySelection_;
     rtty::SignalList signalList_;

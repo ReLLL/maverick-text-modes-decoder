@@ -4,6 +4,23 @@ read_when: Changing decoding, host integration, threading, or log persistence
 
 # Architecture
 
+## PSK extension
+
+The local 1.0.43 candidate adds PSK downstream of the existing digital wide FFT.
+One raw subscription, fixed packet pool and worker serve RTTY and PSK. RTTY's
+DSP and 16 channel slots are unchanged; eight PSK slots add small inverse
+transforms and narrowband decoding. Both share 32 tabs. Mode requests cross the
+worker command boundary; host lifecycle stays on the GUI thread. PSK has separate
+saved enablement, mode-tagged reports and high-bit station IDs. Selection targets
+with shift zero identify PSK separately from RTTY. See [PSK](psk.md).
+
+PSK discovery keeps scanning the full captured spectrum at up to eight updates
+per second. Allocation ranks tuned, pinned, common PSK windows, then other
+candidates. Common windows provide soft preference: they cannot interrupt a
+confirmed channel and leave one probation slot available to ordinary candidates.
+Tuned/pinned candidates can displace lower priorities. All automatic candidates,
+including common windows, use the same retry cooldown.
+
 ## Host integration
 
 Brown is the primary compile-time target (`CW_HOST=brown`). Its existing onWaterfallDrawn event, native get_demod/set_demod commands, operatorLocation and HTTP command override remain unchanged. The standard target (`CW_HOST=sdrpp`) uses ModuleComManager's radio interface for mode reading and Use CW mode. Its EndFramePre ImGui hook updates the notebook even when the sidebar is hidden, and is removed before module destruction. Each binary links only to its selected host's core and bundled VOLK, using matching headers and ImGui.
@@ -44,12 +61,20 @@ The same worker runs two detectors on each packet. The original disables timing 
 
 Once timing is calibrated, the recovery detector uses a peak-memory time constant of 1.5 dot units, bounded to 30-300 ms, instead of the original fixed roughly 333 ms. This prevents a loud character's peak from masking a following attenuated dot. Acquisition, noise-floor multipliers, tone-lock requirements and debounce limits are unchanged. The original detector keeps its earlier threshold behavior; the recovery checkbox controls the alternative. Tests use abrupt attenuation and varied letters/digits, without station-specific logic.
 
-The window has a permanent CW tab and optional RTTY frequency tabs. CW Settings,
+The window has an optional CW tab and digital frequency tabs. CW Settings,
 How to use and the RTTY signal picker open as modals from the shared toolbar.
 CW's log toolbar remains inside its tab. Report copying reads the worker snapshot
 even when the transcript is hidden. Modal cleanup on disable/destruction closes
 only this notebook's popups, preserving other plugins' dialogs and host input.
 The log menu participates in the same waterfall input guard as transcript popups.
+Closing CW or turning its checkbox off pauses the worker, releases its private
+receive channel and hides its tab. Re-enabling reopens/selects the tab, attaches
+the channel again and starts fresh timing acquisition, retaining confirmed text
+and logs. A worker pause revision acknowledges requests so old snapshots cannot
+undo a rapid off/on sequence. Digital monitoring is independent. Close all
+closes digital tabs and preserves CW's current enabled/disabled state.
+An automatic worker safety pause leaves the CW tab's save/log controls visible
+so a storage error cannot hide the recovery actions.
 
 There is no vocabulary suggestion or substitution stage. Markdown saves original chunks and differing recovery chunks. The retired vocabulary preference slot is read and ignored, and written as zero for compatibility with older settings files.
 
@@ -74,6 +99,14 @@ Every duration-fit candidate is rejected if two or more recent marks exceed 4.3 
 Ordinary tracking stays within 0.7-1.4 times the current unit. A separate candidate search can escape that range only with 16 recent marks, at least three dots and three dashes, at least six compatible inner gaps, 90% mark support and mean bounded mark loss no greater than 0.12. Four agreeing updates from distinct completed marks must agree within 12%. The change occurs after a gap longer than 2.2 times both timing units, following completion of the current character. This corrects a false startup lock or a sustained operator-speed change without replacing earlier text. Manual speed changes clear any pending automatic correction; manual locks never run the candidate search.
 
 ## Boundaries
+
+JS8 and Olivia share the RTTY/PSK raw subscription and wide FFT. One bounded,
+utility-priority FEC worker consumes extracted narrowband packets. Four JS8
+windows and two Olivia candidates share that worker, with one reusable JS8
+core. No per-frequency threads or additional host drains are created. Queue
+loss resets only the affected partial FEC blocks. CW and the original digital
+worker remain independent. See [FEC modes](fec-modes.md) for acquisition,
+metadata, SNR, scheduling and format limits.
 
 Optional RTTY uses a separate full-capture subscription and a bounded single
 worker. It shares no decoder state or log queue with CW. Reception tabs, format

@@ -78,6 +78,25 @@ bool rttyEnabled(const std::string& instance){
 void setRttyEnabled(const std::string& instance,bool enabled){
     core::configManager.acquire();core::configManager.conf["moduleInstances"][instance]["rttyEnabled"]=enabled;core::configManager.release(true);
 }
+bool pskEnabled(const std::string& instance){
+    core::configManager.acquire();const auto& instances=core::configManager.conf["moduleInstances"];
+    bool enabled=true;
+    if(instances.contains(instance)&&instances[instance].is_object()&&instances[instance].contains("pskEnabled")&&instances[instance]["pskEnabled"].is_boolean())
+        enabled=instances[instance]["pskEnabled"].get<bool>();
+    core::configManager.release();return enabled;
+}
+void setPskEnabled(const std::string& instance,bool enabled){
+    core::configManager.acquire();core::configManager.conf["moduleInstances"][instance]["pskEnabled"]=enabled;core::configManager.release(true);
+}
+bool fecEnabled(const std::string& instance,bool js8){
+    const char* key=js8?"js8Enabled":"oliviaEnabled";bool enabled=true;
+    core::configManager.acquire();const auto& instances=core::configManager.conf["moduleInstances"];
+    if(instances.contains(instance)&&instances[instance].is_object()&&instances[instance].contains(key)&&instances[instance][key].is_boolean())enabled=instances[instance][key].get<bool>();
+    core::configManager.release();return enabled;
+}
+void setFecEnabled(const std::string& instance,bool js8,bool enabled){
+    core::configManager.acquire();core::configManager.conf["moduleInstances"][instance][js8?"js8Enabled":"oliviaEnabled"]=enabled;core::configManager.release(true);
+}
 rtty::Selection rttySelection(const std::string& instance){
     rtty::Selection selection;
     core::configManager.acquire();

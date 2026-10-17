@@ -4,6 +4,8 @@
 #include "window_presentation.h"
 #include "notebook_style.h"
 #include "rtty_skimmer.h"
+#include "cw_tab.h"
+#include "reception_view.h"
 #include <imgui_internal.h>
 #include <iostream>
 #include <stdexcept>
@@ -69,6 +71,18 @@ int main(){try{
     require(clipboard.find("[RY test pattern]")!=std::string::npos&&clipboard.find("CQ DE TEST")!=std::string::npos,"RTTY clipboard did not copy the displayed view");
     view.copyRTTYReport(rttyStation,rttyCapture,false);
     require(clipboard.find(rttyStation.text)!=std::string::npos,"Original RTTY clipboard lost received characters");
+    rttyStation.psk=true;rttyStation.baud=31.25;rttyStation.shift=0;
+    view.copyRTTYReport(rttyStation,rttyCapture,true);
+    require(clipboard.find("PSK31 reception")!=std::string::npos&&clipboard.find("estimated carrier")!=std::string::npos,"PSK clipboard omitted mode/frequency metadata");
+    require(clipboard.find(rttyStation.text)!=std::string::npos&&clipboard.find("[RY test pattern]")==std::string::npos,"PSK clipboard applied RTTY compaction");
+    require(clipboard.find("ITA2")==std::string::npos&&clipboard.find("Polarity:")==std::string::npos,"PSK clipboard retained RTTY fields");
+    rttyStation.psk=false;rttyStation.mode="JS8";rttyStation.format="JS8 Slow";rttyStation.call="K1ABC";rttyStation.grid="FN42";rttyStation.active=true;rttyStation.snr=-18;
+    view.copyRTTYReport(rttyStation,rttyCapture,true);
+    for(const char* value:{"JS8 Slow","K1ABC","FN42","-18.0 dB","2500 Hz","RYRYRYRYRYRY"})require(clipboard.find(value)!=std::string::npos,"JS8 clipboard lost metadata or literal text");
+    rttyStation.mode="Olivia";rttyStation.format="Olivia 8/250";view.copyRTTYReport(rttyStation,rttyCapture,true);
+    require(clipboard.find("Olivia 8/250")!=std::string::npos&&clipboard.find("Polarity:")==std::string::npos,"Olivia report used RTTY fields");
+    view.copyReport(7020000,12,-20,false,false,&hiddenUpdate,-7.4);
+    require(clipboard.find("-7.4 dB")!=std::string::npos,"CW clipboard omitted measured SNR");
     // The same presentation helper used on plugin enable and sidebar reopening
     // must recover a hidden/off-screen window after the host display shrinks.
     bool present=false;
@@ -116,18 +130,57 @@ int main(){try{
     popupFrame("Other plugin","How to use");notebook::closePopups();
     require(GImGui->OpenPopupStack.Size==1,"Notebook closed another plugin's modal");
     ImGui::ClosePopupToLevel(0,true);
+    {
+        notebook::CWTab cw;
+        cw.request(false,0);cw.sync(false,0);
+        require(!cw.enabled(),"Old worker snapshot reopened CW");
+        cw.request(true,0);cw.sync(true,1);
+        require(cw.enabled(),"Off acknowledgement undid a newer CW on request");
+        cw.sync(false,2);require(cw.enabled(),"CW resume acknowledgement hid its tab");
+        bool sawClose=false,sawDigital=false,sawCW=false;ImVec2 closePoint{};
+        auto cwFrame=[&](bool select){
+            ImGui::NewFrame();ImGui::SetNextWindowPos({10,10});ImGui::SetNextWindowSize({800,500});
+            ImGui::Begin("CW close control",nullptr,ImGuiWindowFlags_NoSavedSettings);
+            if(ImGui::BeginTabBar("receive tabs")){
+                bool closed=false;const bool visible=cw.begin(select,closed);
+                if(cw.open()){
+                    auto min=ImGui::GetItemRectMin(),max=ImGui::GetItemRectMax();
+                    closePoint={max.x-2*ImGui::GetStyle().FramePadding.x-ImGui::GetFontSize()/2,min.y+ImGui::GetFontSize()/2};
+                }
+                if(closed){sawClose=true;cw.request(false,2);}
+                if(visible){sawCW=true;ImGui::TextUnformatted("Retained CW text");ImGui::EndTabItem();}
+                if(ImGui::BeginTabItem("14085.125 kHz RTTY")){sawDigital=true;ImGui::EndTabItem();}
+                ImGui::EndTabBar();
+            }
+            ImGui::End();ImGui::Render();
+        };
+        cwFrame(true);cwFrame(false);io.MousePos=closePoint;cwFrame(false);
+        io.MouseDown[0]=true;cwFrame(false);io.MouseDown[0]=false;cwFrame(false);cwFrame(false);
+        require(sawClose&&!cw.enabled(),"CW tab X did not disable CW");
+        require(sawDigital,"Closing CW hid the digital tab");
+        sawCW=false;cwFrame(true);require(!sawCW,"Selecting CW while disabled reopened it");
+        cw.sync(false,2);require(!cw.enabled(),"Pending pause reopened the closed tab");
+        cw.sync(true,3);cw.request(true,3);cw.sync(true,3);
+        require(cw.enabled(),"CW on did not immediately reopen its tab");
+        cw.sync(false,4);sawCW=false;cwFrame(true);cwFrame(false);
+        require(sawCW,"Re-enabled CW tab did not show its contents");
+        cw.sync(true,4);require(!cw.enabled(),"Worker safety pause did not disable CW");
+        sawCW=false;cwFrame(false);require(sawCW,"Worker safety pause hid log recovery controls");
+    }
     // Status changes draw inside a fixed footer, with no exterior margin and
     // no added rows before the tab strip. Test both selected and inactive dots.
-    ImVec2 fixedTab{};bool haveTab=false;
+    ImVec2 fixedTab[5]{};bool haveTab[5]{};
     for(int pass=0;pass<4;++pass){
-        ImGui::NewFrame();ImGui::SetNextWindowPos({10,10});ImGui::SetNextWindowSize({800,600});
+        ImGui::NewFrame();ImGui::SetNextWindowPos({10,10});ImGui::SetNextWindowSize({1100,600});
         ImGui::Begin("RTTY status layout",nullptr,ImGuiWindowFlags_NoSavedSettings);
-        bool cwEnabled=true,rttyEnabled=true;
+        bool cwEnabled=true,rttyEnabled=true,pskEnabled=true;
         ImGui::Checkbox("CW",&cwEnabled);ImGui::SameLine();
-        ImGui::Checkbox("RTTY",&rttyEnabled);
+        ImGui::Checkbox("RTTY",&rttyEnabled);ImGui::SameLine();ImGui::Checkbox("PSK31/63",&pskEnabled);
+        bool js8=true,olivia=true;ImGui::SameLine();ImGui::Checkbox("JS8",&js8);ImGui::SameLine();ImGui::Checkbox("Olivia",&olivia);
         if(ImGui::BeginTabBar("activity tabs")){
-            for(int tab=0;tab<2;++tab){
-                bool selected=ImGui::BeginTabItem(tab?"    10100.580 kHz RTTY":"CW");
+            for(int tab=0;tab<5;++tab){
+                const char* captions[]{"CW","    10100.580 kHz RTTY","    14071.234 kHz PSK31","    14079.500 kHz JS8","    14072.500 kHz Olivia"};
+                bool selected=ImGui::BeginTabItem(captions[tab]);
                 if(tab){
                     auto* draw=ImGui::GetWindowDrawList();int start=draw->VtxBuffer.Size;
                     notebook::tabActivity(pass%2==0);
@@ -137,8 +190,8 @@ int main(){try{
                     if(pass>0)require(color,"RTTY circle used the wrong activity color");
                     auto point=ImGui::GetItemRectMin();
                     if(pass>0){
-                        if(haveTab)require(point.x==fixedTab.x&&point.y==fixedTab.y,"Status changes shifted frequency tabs");
-                        fixedTab=point;haveTab=true;
+                        if(haveTab[tab])require(point.x==fixedTab[tab].x&&point.y==fixedTab[tab].y,"Status changes shifted frequency tabs");
+                        fixedTab[tab]=point;haveTab[tab]=true;
                     }
                 }
                 if(selected){ImGui::TextUnformatted("Received text");ImGui::EndTabItem();}
@@ -148,7 +201,22 @@ int main(){try{
         auto* draw=ImGui::GetWindowDrawList();int start=draw->VtxBuffer.Size;
         notebook::statusBar(pass%2?"RTTY monitoring | 16/16 decoders | 8 waiting | 123 gaps":"RTTY monitoring", "Detailed status",pass%2);
         require(draw->VtxBuffer[start].pos.x==10&&draw->VtxBuffer[start].pos.y==610-notebook::statusHeight(),"Status bar has an exterior margin");
-        require(draw->VtxBuffer[start+2].pos.x==810&&draw->VtxBuffer[start+2].pos.y==610,"Status bar does not reach window edges");
+        require(draw->VtxBuffer[start+2].pos.x==1110&&draw->VtxBuffer[start+2].pos.y==610,"Status bar does not reach window edges");
+        ImGui::End();ImGui::Render();
+    }
+    {
+        const auto low=notebook::snrColor(-30),mid=notebook::snrColor(-10),high=notebook::snrColor(10);
+        require(low.x>low.y&&mid.x>mid.z&&high.y>high.x,"SNR color scale does not progress from red to green");
+        const char* modes[]={"CW","RTTY","PSK31","PSK63","JS8","Olivia"};
+        for(int i=0;i<6;i++)for(int j=i+1;j<6;j++){
+            auto a=notebook::modeColor(modes[i]),b=notebook::modeColor(modes[j]);
+            require(a.x!=b.x||a.y!=b.y||a.z!=b.z,"Modes have identical tab accents");
+        }
+        ImGui::NewFrame();ImGui::SetNextWindowPos({10,10});ImGui::SetNextWindowSize({700,400});
+        ImGui::Begin("Reception metadata",nullptr,ImGuiWindowFlags_NoSavedSettings);
+        radio::Reception rx;rx.observeSnr(-14.2,1);rx.received(radio::monotonicSeconds()-119,1792108800);
+        ImGui::LogToClipboard();notebook::rxSnr(rx,false);notebook::lastReceived(rx);ImGui::LogFinish();
+        require(clipboard.find("RX SNR -14.2 dB (last)")!=std::string::npos&&clipboard.find("119 seconds ago")!=std::string::npos,"Native header hid held SNR or recent reception age");
         ImGui::End();ImGui::Render();
     }
     ImGui::DestroyContext();std::cout<<"Transcript refresh and window presentation checks passed\n";

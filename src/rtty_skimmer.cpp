@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "rtty_skimmer.h"
 #include "rtty_presentation.h"
+#include "psk_monitor.h"
+#include "signal_metrics.h"
+#include "fec_monitor.h"
 #include <algorithm>
 #include <cmath>
 
@@ -20,7 +23,7 @@ struct Skimmer::Channel {
     Channel(int b,double f,double s,float power,double seen,double rate,double residual):
         bin(b),frequency(f),shift(s),lastSeen(seen),strength(power),created(seen),decoder(rate,residual,s){}
 };
-Skimmer::Skimmer():band_(channelSize){}
+Skimmer::Skimmer():band_(channelSize),psk_(std::make_unique<psk::Monitor>()),fec_(std::make_unique<fec::Monitor>()){}
 Skimmer::~Skimmer()=default;
 void Skimmer::configure(double rate,double center){
     discontinuity();rate_=rate;center_=center;size_=256;
@@ -31,6 +34,8 @@ void Skimmer::configure(double rate,double center){
     for(size_t i=0;i<size_;++i)window_[i]=.5f-.5f*std::cos(2*3.141592653589793*i/size_);
 }
 void Skimmer::discontinuity(){
+    psk_->reset();
+    fec_->reset();
     channels_.clear();cooldowns_.clear();signals_.clear();filled_=0;lastDiscovery_=-1;candidates_=limited_=0;
     std::fill(power_.begin(),power_.end(),0);
     for(auto& s:stations_)s.active=false;
@@ -54,7 +59,12 @@ void Skimmer::frame(){
     const float alpha=1-std::exp(-double(size_/2)/rate_/.18);
     const float scale=1.f/(float(size_)*size_);
     for(size_t i=0;i<size_;++i){float p=std::norm(spectrum_[i])*scale;if(!std::isfinite(p))p=0;power_[i]+=alpha*(p-power_[i]);}
-    if(seconds_-lastDiscovery_>=.125){discover();lastDiscovery_=seconds_;}
+    if(seconds_-lastDiscovery_>=.125){
+        if(rttyEnabled_)discover();
+        if(pskEnabled_)psk_->discover(power_,binHz_,center_,seconds_,focus_,selection_);
+        if(js8Enabled_||oliviaEnabled_)fec_->discover(power_,binHz_,center_,seconds_,focus_,selection_);
+        lastDiscovery_=seconds_;
+    }
     for(auto& ptr:channels_){
         auto& c=*ptr;
         // Integer-bin translation leaves sample phase continuous across hops
@@ -75,6 +85,8 @@ void Skimmer::frame(){
         c.decoder.process(band_.data(),channelSize/2);
     }
     if(seconds_-lastDiscovery_<double(size_/2)/rate_)updateStations();
+    if(pskEnabled_)psk_->frame(spectrum_,rate_,center_,seconds_,maxTabs-stations_.size()-fec_->tabs());
+    if(js8Enabled_||oliviaEnabled_)fec_->frame(spectrum_,rate_,center_,seconds_,maxTabs-stations_.size()-psk_->tabs());
 }
 void Skimmer::discover(){
     noiseScratch_=power_;
@@ -190,7 +202,7 @@ void Skimmer::updateStations(){
             auto old=std::find_if(stations_.begin(),stations_.end(),[&](const auto& s){return !s.active&&matches({s.center,s.shift},c->frequency,c->shift);});
             if(old!=stations_.end()){c->id=old->id;c->prefix=old->text+"\n";}
             else{
-                if(stations_.size()>=maxTabs){++limited_;continue;}
+                if(stations_.size()+psk_->tabs()+fec_->tabs()>=maxTabs){++limited_;continue;}
                 c->id=nextId_++;stations_.push_back({});stations_.back().id=c->id;
             }
         }
@@ -198,9 +210,10 @@ void Skimmer::updateStations(){
         if(s==stations_.end())continue;
         s->center=c->frequency;s->frequency=c->frequency+(result.reverse?-1:1)*c->shift/2;
         s->shift=c->shift;s->baud=result.baud;s->reverse=result.reverse;s->active=seconds_-c->lastDecoded<2;
+        s->observeSnr(radio::spectralSnr(int(size_),binHz_,(s->center-center_)/binHz_,s->shift+2*s->baud,[&](int b){return power_[b];}));
         auto text=c->prefix+result.text;
         if(text.size()>40000)text.erase(0,text.size()-32000);
-        if(received||(!text.empty()&&text!=s->text))s->lastTextAt=monotonicSeconds();
+        if(received||(!text.empty()&&text!=s->text))s->received();
         s->text=std::move(text);
         if(s->text.size()>40000)s->text.erase(0,s->text.size()-32000);
     }
@@ -210,6 +223,8 @@ Status Skimmer::snapshot() const{
     s.focus=focus_;
     for(const auto& c:channels_)if(focus_.contains(c->frequency,c->shift))++s.focusedDecoders;
     s.decoders=channels_.size();s.limited=limited_;s.blocks=blocks_;s.signals=signals_;
+    psk_->append(s);
+    fec_->append(s);
     for(const auto& target:selection_.pinned){
         if(!std::any_of(s.signals.begin(),s.signals.end(),[&](const auto& v){return matches(target,v.center,v.shift);}))s.signals.push_back({target.center,target.shift,false,false,false});
     }
@@ -222,12 +237,16 @@ Status Skimmer::snapshot() const{
     return s;
 }
 void Skimmer::close(uint64_t id){
+    psk_->close(id);
+    fec_->close(id);
     channels_.erase(std::remove_if(channels_.begin(),channels_.end(),[&](const auto& c){return c->id==id;}),channels_.end());
     stations_.erase(std::remove_if(stations_.begin(),stations_.end(),[&](const auto& s){return s.id==id;}),stations_.end());
 }
-void Skimmer::closeAll(){discontinuity();stations_.clear();}
+void Skimmer::closeAll(){discontinuity();stations_.clear();psk_->closeAll();fec_->closeAll();}
 void Skimmer::selection(Selection selection){
     selection_=validated(std::move(selection));
+    psk_->selection(selection_);
+    fec_->selection(selection_);
     channels_.erase(std::remove_if(channels_.begin(),channels_.end(),[&](const auto& c){
         return contains(selection_.ignored,c->frequency,c->shift)||
             (selection_.onlyPinned&&!contains(selection_.pinned,c->frequency,c->shift));
@@ -241,4 +260,12 @@ void Skimmer::focus(Focus focus){
     focus_=focus;lastDiscovery_=-1;
     cooldowns_.erase(std::remove_if(cooldowns_.begin(),cooldowns_.end(),[&](const auto& c){return focus_.contains(c.frequency,c.shift);}),cooldowns_.end());
 }
+void Skimmer::modes(bool rtty,bool psk){
+    if(rttyEnabled_!=rtty){channels_.clear();signals_.clear();cooldowns_.clear();candidates_=limited_=0;for(auto& s:stations_)s.active=false;}
+    if(pskEnabled_!=psk)psk_->reset();
+    rttyEnabled_=rtty;pskEnabled_=psk;lastDiscovery_=-1;
+}
+void Skimmer::fecModes(bool js8,bool olivia){js8Enabled_=js8;oliviaEnabled_=olivia;fec_->modes(js8,olivia);lastDiscovery_=-1;}
+void Skimmer::captureTime(double utc){fec_->captureTime(utc,seconds_);}
+void Skimmer::waitForDecoders(){fec_->waitIdle(maxTabs-stations_.size()-psk_->tabs());}
 }

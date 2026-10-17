@@ -1,0 +1,4 @@
+// Embedded offline reference data. Original notices: resources/cty-LICENSE.txt.
+#pragma once
+inline constexpr char notebookCountryData[]=R"CTY(@CW_CTY_DATA@)CTY";
+inline constexpr char notebookFlagCodes[]=R"FLAGS(@CW_FLAG_CODES@)FLAGS";

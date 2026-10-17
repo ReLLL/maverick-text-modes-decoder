@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.0.46 - unreleased
+
+- Retain the last valid local RX SNR through inactive periods, with a "last"
+  label and a red/yellow/green signal scale. Clear CW metadata on retuning.
+- Give each mode its own tab accent. Show the last reception age for under
+  120 seconds, then its saved local date/time, including in copied reports.
+- Add an offline JS8 header callsign country estimate and cached native flag.
+  Keep inferred country separate from the received grid and remote report.
+- Suppress interleaved duplicate JS8 frames without refreshing receipt times.
+- Initialize unused JS8 spectral columns before synchronization searches;
+  uninitialized edge power caused intermittent Ultra fixture misses.
+
+## 1.0.45 - unreleased
+
+- Closing the CW tab turns CW off and releases its private receive channel.
+  Turning CW on reopens and selects the tab, with fresh timing acquisition.
+  Keep confirmed text and logs; digital monitoring continues independently.
+- Keep CW tab state consistent during quick toggles and delayed worker updates.
+
+## 1.0.44 - unreleased
+
+- Add native JS8Call reception at all five speeds and seven common Olivia
+  formats, sharing full-capture discovery and frequency tabs with RTTY/PSK.
+- Keep FEC in one bounded background worker, with a shared JS8 core, four JS8
+  windows and two Olivia candidates. Preserve the existing CW/RTTY/PSK budgets.
+- Show local RX SNR for CW and every digital tab, with a 2500 Hz reference.
+  Include received JS8 header callsigns, grids and remote reports when present.
+- Add metadata to clipboard reports and AI handoff. Preserve text and CW logs.
+
+## 1.0.43 - unreleased
+
+- Add receive-only BPSK31 and BPSK63 across the captured spectrum, sharing the
+  existing raw subscription, packet queue, wide FFT and worker.
+- Add independent PSK31/63 control and frequency tabs with tuned-filter priority,
+  pins/ignores, Follow PSK, one-minute activity, clipboard reports and AI handoff.
+- Prefer common PSK frequency windows after tuned/pinned signals, while keeping
+  full-capture discovery and an ordinary candidate probation slot.
+- Retain 16 RTTY slots and add eight bounded PSK slots; share 32 digital tabs.
+  Close all tabs retains CW. CW decoding and logging remain independent.
+- Require phase, timing, Varicode and varied-text evidence before PSK tabs open;
+  expose capacity/gaps and preserve text through reacquisition.
+
 ## 1.0.42 - 2026-10-17
 
 First public RTTY release, incorporating the local 1.0.36-1.0.41 builds below.

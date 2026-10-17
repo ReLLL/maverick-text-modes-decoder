@@ -50,11 +50,13 @@ void Engine::resetDecoders(){
 }
 void Engine::stationChanged(double frequency){
     if(frequency_>0&&std::abs(frequency-frequency_)>.5){
+        reception_={};recoveredReception_={};
         transcriptBreakPending_=recoveredBreakPending_=true;
         if(autoRetune_){manualWpm_=manualTone_=0;preferencesDirty_=true;}
     }
 }
 void Engine::decoded(const std::string& text,bool recovered){
+    if(text.find_first_not_of(" \r\n\t")!=std::string::npos)(recovered?recoveredReception_:reception_).received();
     bool& breakPending=recovered?recoveredBreakPending_:transcriptBreakPending_;
     if(text==" "){
         std::lock_guard<std::mutex> lock(viewMutex_);
@@ -123,6 +125,7 @@ void Engine::apply(const Command& c){
         std::lock_guard<std::mutex> lock(viewMutex_);view_.notice="20-second diagnostic capture: "+path.string();
     }
     else if(c.name=="input_mode"||c.name=="am_audio"){
+        reception_={};recoveredReception_={};
         if(c.name=="am_audio")amAudio_=c.value=="1";
         else wideInput_=c.value=="1";
         if(autoRetune_){manualWpm_=manualTone_=0;preferencesDirty_=true;}
@@ -130,7 +133,7 @@ void Engine::apply(const Command& c){
         {std::lock_guard<std::mutex> lock(queueMutex_);queue_.clear();queuedSamples_=0;}
         discardCurrentPacket_=true;
     }
-    else if(c.name=="pause") {paused_=c.value=="1";resetDecoders();if(autoSave_)flush();}
+    else if(c.name=="pause") {paused_=c.value=="1";++pauseRevision_;resetDecoders();if(autoSave_)flush();}
     else if(c.name=="autosave") {autoSave_=c.value=="1";if(autoSave_)flush();}
     else if(c.name=="save") {flush();if(journal_.path().empty())journal_.create(frequency_);persist();}
     else if(c.name=="reset"||c.name=="retune"){
@@ -143,12 +146,13 @@ void Engine::apply(const Command& c){
         {std::lock_guard<std::mutex> lock(queueMutex_);queue_.clear();queuedSamples_=0;}
         discardCurrentPacket_=true;
     }
-    else if(c.name=="clear_view"){std::lock_guard<std::mutex> lock(viewMutex_);view_.text.clear();view_.recoveredText.clear();++view_.transcriptReset;}
+    else if(c.name=="clear_view"){reception_.lastTextAt=reception_.lastTextUtc=recoveredReception_.lastTextAt=recoveredReception_.lastTextUtc=0;std::lock_guard<std::mutex> lock(viewMutex_);view_.text.clear();view_.recoveredText.clear();++view_.transcriptReset;}
     else if(c.name=="rename"){flush();if(journal_.path().empty())journal_.create(frequency_);journal_.rename(c.value);persist();}
     else if(c.name=="new"){flush();journal_.create(frequency_);persist();saved_=0;}
     else if(c.name=="clear_log"){
         flush();if(journal_.path().empty())journal_.create(frequency_);
         auto backup=journal_.clear();saved_=0;
+        reception_.lastTextAt=reception_.lastTextUtc=recoveredReception_.lastTextAt=recoveredReception_.lastTextUtc=0;
         resetDecoders();transcriptBreakPending_=recoveredBreakPending_=false;
         {std::lock_guard<std::mutex> lock(queueMutex_);queue_.clear();queuedSamples_=0;}
         discardCurrentPacket_=true;
@@ -161,7 +165,7 @@ void Engine::apply(const Command& c){
         if(!std::isfinite(v) || (v!=0 && (c.name=="wpm"?(v<3||v>200):(v<200||v>(wideInput_?31000:1800)))))throw std::runtime_error("Setting outside supported range");
         if(c.name=="wpm"){
             manualWpm_=v;decoder_.setSpeed(v);recoveredDecoder_.setSpeed(v);
-        }else{manualTone_=v;resetDecoders();}
+        }else{manualTone_=v;reception_={};recoveredReception_={};resetDecoders();}
     }
     else if(c.name=="extended_speed"){
         extendedSpeed_=c.value=="1";
@@ -227,10 +231,14 @@ void Engine::work(){
                 if(autoSave_)flush();
             }
         }catch(const std::exception& e){std::lock_guard<std::mutex> lock(viewMutex_);view_.error=e.what();}
-        {std::lock_guard<std::mutex> lock(viewMutex_);view_.decoder=decoder_.stats();view_.frequency=frequency_;view_.blocks=blocks_;view_.dropped=dropped_;
-            view_.path=journal_.path().string();view_.saved=saved_;view_.paused=paused_;view_.autosave=autoSave_;
+        const auto original=decoder_.stats(),recovered=recoveredDecoder_.stats();
+        if(original.reception.snrAt>reception_.snrAt)reception_.observeSnr(original.reception.snr,original.reception.snrAt);
+        if(recovered.reception.snrAt>recoveredReception_.snrAt)recoveredReception_.observeSnr(recovered.reception.snr,recovered.reception.snrAt);
+        {std::lock_guard<std::mutex> lock(viewMutex_);view_.decoder=original;view_.frequency=frequency_;view_.blocks=blocks_;view_.dropped=dropped_;
+            view_.reception=reception_;view_.recoveredReception=recoveredReception_;
+            view_.path=journal_.path().string();view_.saved=saved_;view_.paused=paused_;view_.pauseRevision=pauseRevision_;view_.autosave=autoSave_;
             view_.manualWpm=manualWpm_;view_.manualTone=manualTone_;}
-        {std::lock_guard<std::mutex> lock(viewMutex_);view_.recoveredDecoder=recoveredDecoder_.stats();view_.timingRecovery=timingRecovery_;view_.autoRetune=autoRetune_;view_.extendedSpeed=extendedSpeed_;view_.amAudio=amAudio_;}
+        {std::lock_guard<std::mutex> lock(viewMutex_);view_.recoveredDecoder=recovered;view_.timingRecovery=timingRecovery_;view_.autoRetune=autoRetune_;view_.extendedSpeed=extendedSpeed_;view_.amAudio=amAudio_;}
     }
     try{if(preferencesDirty_)preferences();flush();}catch(...){ /* Previous successfully synced rows remain recoverable. */ }
 }
