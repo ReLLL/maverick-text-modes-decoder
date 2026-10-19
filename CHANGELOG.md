@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.50 - unreleased
+## 1.0.50 - 2026-10-19
 
 - Rename the project to Maverick Text Modes Decoder: CW / RTTY / JS8 / Olivia /
   PSK31 / PSK63. Preserve existing module IDs, settings, logs and stable window

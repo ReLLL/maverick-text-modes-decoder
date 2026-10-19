@@ -7,6 +7,8 @@ test capture. See [validation evidence and limits](#validation-and-limits).
 
 ## Download and install
 
+[Download the Windows preview](https://github.com/ReLLL/maverick-text-modes-decoder/releases/download/v1.0.50/maverick-text-modes-decoder-1.0.50-sdrsharp-windows-x64-preview.zip), or choose a macOS package from [Releases](https://github.com/ReLLL/maverick-text-modes-decoder/releases/latest).
+
 Target: Windows x64, SDR# .NET 9, official revision 1.0.0.1921. Validation uses
 Windows 11 ARM64 under Parallels x64 emulation. Other SDR# versions, x86 builds
 and .NET 8 are not validated. Official SDK and host hashes are recorded in

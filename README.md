@@ -3,8 +3,8 @@
 For SDR++, SDR++Brown and SDR#.
 
 Previously CW Notebook. Existing SDR++/Brown plugin identifiers, settings,
-log folders and update compatibility are retained. Development version 1.0.50
-adds a Windows SDR# preview. See [Windows installation and tested limits](docs/WINDOWS.md).
+log folders and update compatibility are retained. Version 1.0.50 adds a
+Windows SDR# preview. See [Windows installation and tested limits](docs/WINDOWS.md).
 
 Decode one CW/Morse signal into a selectable transcript and recoverable Markdown log, alongside RTTY, BPSK31/63, JS8 and Olivia streams in frequency tabs across the captured spectrum. Maintained by [ReLLL](https://github.com/ReLLL). Free and open source under GPL-3.0-or-later.
 
