@@ -59,7 +59,9 @@ def install(binary: Path, root: Path, host: str = "brown") -> Path:
     instances["CW Notebook"] = dict(current or {})
     instances["CW Notebook"].update({"enabled": current.get("enabled", True) if current else True, "module": "cw_notebook"})
     aliases = {"CW Notebook", "Maverick Decoder", "Maverick CW / RTTY / JS8 / Olivia / PSK31 / PSK63 Decoder", "Maverick Text Modes Decoder: CW / RTTY / JS8 / Olivia / PSK31 / PSK63", "Maverick Text Modes Decoder"}
-    data["menuElements"] = [{"name": "Maverick Text Modes Decoder", "open": True}] + [x for x in menu if x["name"] not in aliases]
+    previous_menu = next((item for item in menu if item["name"] in aliases), {})
+    entry = {"open": True, **previous_menu, "name": "Maverick Text Modes Decoder"}
+    data["menuElements"] = [entry] + [x for x in menu if x["name"] not in aliases]
     encoded = (json.dumps(data, indent=4) + "\n").encode()
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d-%H%M%S-%fZ")
     backup = root / "cw-notebook-backups" / stamp

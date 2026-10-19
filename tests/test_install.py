@@ -52,6 +52,7 @@ class InstallerTests(unittest.TestCase):
         data = json.loads(self.config.read_text())
         self.assertEqual(data["moduleInstances"], original["moduleInstances"])
         self.assertEqual([item["name"] for item in data["menuElements"]], ["Maverick Text Modes Decoder", "Radio"])
+        self.assertFalse(data["menuElements"][0]["open"])
 
     def test_separate_host_profiles_and_disabled_preference(self):
         self.binary.with_suffix(".host.json").write_text('{"host":"sdrpp","version":"1.0.35"}')
