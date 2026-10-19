@@ -66,6 +66,7 @@ CWNotebook::~CWNotebook(){
     detach();gui::menu.removeEntry(name_);
 }
 void CWNotebook::postInit(){
+    textOptions_=cw::host::textOptions(name_);
     rttySelection_=cw::host::rttySelection(name_);
     if(enabled_){select(streamName_);metadata();}
     rttyEnabled_=cw::host::rttyEnabled(name_);pskEnabled_=cw::host::pskEnabled(name_);

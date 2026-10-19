@@ -6,7 +6,7 @@ read_when: Changing decoding, host integration, threading, or log persistence
 
 ## PSK extension
 
-The local 1.0.43 candidate adds PSK downstream of the existing digital wide FFT.
+PSK runs downstream of the existing digital wide FFT.
 One raw subscription, fixed packet pool and worker serve RTTY and PSK. RTTY's
 DSP and 16 channel slots are unchanged; eight PSK slots add small inverse
 transforms and narrowband decoding. Both share 32 tabs. Mode requests cross the
@@ -61,7 +61,7 @@ The same worker runs two detectors on each packet. The original disables timing 
 
 Once timing is calibrated, the recovery detector uses a peak-memory time constant of 1.5 dot units, bounded to 30-300 ms, instead of the original fixed roughly 333 ms. This prevents a loud character's peak from masking a following attenuated dot. Acquisition, noise-floor multipliers, tone-lock requirements and debounce limits are unchanged. The original detector keeps its earlier threshold behavior; the recovery checkbox controls the alternative. Tests use abrupt attenuation and varied letters/digits, without station-specific logic.
 
-The window has an optional CW tab and digital frequency tabs. CW Settings,
+The window has an optional CW tab and digital frequency tabs. Settings,
 How to use and the RTTY signal picker open as modals from the shared toolbar.
 CW's log toolbar remains inside its tab. Report copying reads the worker snapshot
 even when the transcript is hidden. Modal cleanup on disable/destruction closes
@@ -75,6 +75,19 @@ undo a rapid off/on sequence. Digital monitoring is independent. Close all
 closes digital tabs and preserves CW's current enabled/disabled state.
 An automatic worker safety pause leaves the CW tab's save/log controls visible
 so a storage error cannot hide the recovery actions.
+
+Settings has a persistent navigation column with Text & callsigns, CW decoding,
+Monitoring and Diagnostics pages. Display preferences live inside the module
+instance for both hosts. Callsign scanning runs only when displayed text changes,
+with 24 recent tags and a bounded per-pass lookup cache. Country-prefix data is
+embedded; there is no per-frame filesystem or network lookup. Native flag images
+are cached by ISO code and released with the plugin.
+
+Transcript annotations keep the original string separately. A wrapped display
+buffer reserves inline flag slots, and a glyph pass recolors the host's existing
+InputTextMultiline vertices without replacing its selection/scroll widget.
+Generated flag slots copy as Unicode only in selections; full reports and logs
+keep received text. The host font atlas and global theme remain unchanged.
 
 There is no vocabulary suggestion or substitution stage. Markdown saves original chunks and differing recovery chunks. The retired vocabulary preference slot is read and ignored, and written as zero for compatibility with older settings files.
 
@@ -99,6 +112,14 @@ Every duration-fit candidate is rejected if two or more recent marks exceed 4.3 
 Ordinary tracking stays within 0.7-1.4 times the current unit. A separate candidate search can escape that range only with 16 recent marks, at least three dots and three dashes, at least six compatible inner gaps, 90% mark support and mean bounded mark loss no greater than 0.12. Four agreeing updates from distinct completed marks must agree within 12%. The change occurs after a gap longer than 2.2 times both timing units, following completion of the current character. This corrects a false startup lock or a sustained operator-speed change without replacing earlier text. Manual speed changes clear any pending automatic correction; manual locks never run the candidate search.
 
 ## Boundaries
+
+Retained RX SNR requires signal activity, not merely a finite spectral estimate.
+RTTY updates on newly accepted frames. PSK requires new demodulated symbols and
+a carrier observed within the latest discovery interval. CW requires detected
+keying and spectral contrast, including when its tone is manually selected.
+These gates affect retained metadata only; decoder acquisition and thresholds
+are unchanged. JS8/Olivia already publish SNR with accepted decoded frames.
+Noise-only input keeps the last signal measurement and its original age.
 
 JS8 and Olivia share the RTTY/PSK raw subscription and wide FFT. One bounded,
 utility-priority FEC worker consumes extracted narrowband packets. Four JS8

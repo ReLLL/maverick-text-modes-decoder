@@ -99,12 +99,7 @@ void CWNotebook::logControls(const cw::Snapshot& s){
     ImGui::TextDisabled("%s",name.empty()?"A log is created when text arrives.":name.c_str());hint(s.path.c_str());
 }
 void CWNotebook::decoderControls(const cw::Snapshot& s){
-    if(!cw::host::brown){
-        ImGui::SetNextItemWidth(140);
-        if(ImGui::InputText("Receiver grid (optional)",grid_,sizeof(grid_),ImGuiInputTextFlags_EnterReturnsTrue))gridError_=!cw::host::setGrid(grid_,name_);
-        hint("Maidenhead grid for AI reception context. Press Enter to save; leave empty if unknown.");
-        if(gridError_)ImGui::TextColored(warning,"Use a 4, 6 or 8 character Maidenhead grid.");
-    }
+    ImGui::TextColored(notebook::brass,"Timing");ImGui::Spacing();
     bool extended=s.extendedSpeed;
     if(ImGui::Checkbox("Extended automatic speed (3-200 WPM)",&extended))engine_.command("extended_speed",extended?"1":"0");
     hint("Allow unusually slow or fast CW speeds. Leave off for the normal 5-45 WPM range and more conservative acquisition.");
@@ -114,6 +109,7 @@ void CWNotebook::decoderControls(const cw::Snapshot& s){
     ImGui::SameLine();ImGui::SetNextItemWidth(180);
     if(ImGui::SliderFloat("WPM",&speed_,3,200,"%.1f")&&manualSpeed_)engine_.command("wpm",std::to_string(speed_));
     hint("Manual speed also decodes held key/gap intervals; it does not discard the buffer.");
+    ImGui::Spacing();ImGui::TextColored(notebook::brass,"Tone and tuning");ImGui::Spacing();
     if(ImGui::Checkbox(channel_.amAudio?"Lock AM audio tone":"Lock carrier offset",&manualPitch_)){
         if(manualPitch_)pitch_=s.decoder.tone;
         engine_.command("tone",manualPitch_?std::to_string(pitch_):"0");
@@ -132,21 +128,12 @@ void CWNotebook::decoderControls(const cw::Snapshot& s){
         if(ImGui::Button("Return to automatic detection")){engine_.command("wpm","0");engine_.command("tone","0");}
         hint("Release both manual CW locks and let the decoder estimate speed and tone again.");
     }
-    ImGui::Separator();
+    ImGui::Spacing();ImGui::TextColored(notebook::brass,"Recovery");ImGui::Spacing();
     bool recovery=s.timingRecovery;
     if(ImGui::Checkbox("Timing and fade repair in separate recovery version",&recovery))engine_.command("timing_recovery",recovery?"1":"0");
     hint("Produce a separate, unverified CW timing/fade recovery version for comparison. The original decode is kept and never replaced with guessed words.");
     ImGui::TextWrapped("Follows sudden fades, filters brief glitches and adapts to uneven gaps. Select Timing + fade recovery in Transcript to compare. Original text is kept; no word replacement or vocabulary guessing.");
     ImGui::TextWrapped("CW, USB, LSB, DSB and AM use Radio's full passband. One keyed signal at a time; narrow the filter to reduce interference. Speaker volume and audio AGC do not affect decoding.");
-    if(ImGui::CollapsingHeader("Diagnostics")){
-        ImGui::Text("CW Notebook %s | %s",CW_VERSION_STRING,cw::host::name);
-        ImGui::Text("Glitches filtered: %llu | Quiet relearns: %llu | Reconnects: %llu",
-            static_cast<unsigned long long>(s.recoveredDecoder.filteredGlitches),static_cast<unsigned long long>(s.recoveredDecoder.recoveries),static_cast<unsigned long long>(reconnects_));
-        if(ImGui::Button("Reconnect decoder"))handleDebugCommand("reconnect","");
-        hint("Reconnect only CW Notebook's private receiver channel. Keeps the host source and other plugins running.");
-        ImGui::SameLine();if(ImGui::Button("Save 20s signal"))engine_.command("capture");
-        hint("Save a private recording for offline diagnosis. Reception continues.");
-    }
 }
 void CWNotebook::cwStatus(const cw::Snapshot& s){
     const auto& d=showRecovery_?s.recoveredDecoder:s.decoder;
@@ -217,8 +204,9 @@ void CWNotebook::draw(){
             hint("Change transcript text size. Applies to CW and RTTY text without changing receiver decoding.");
             notebook::flow("Clear view");if(ImGui::Button("Clear view"))engine_.command("clear_view");hint("Clear displayed text only. The log is retained.");
             const auto text=cw::transcriptText(s,showRecovery_);
+            callTags(transcript_,text);
             if(text.empty())ImGui::TextDisabled("Tune one Morse signal in CW, USB, LSB, DSB or AM. Text appears as timing becomes clear.");
-            transcript_.draw(text,std::max(80.f,ImGui::GetContentRegionAvail().y-footer-24),textSize_,follow_);
+            transcript_.draw(text,std::max(80.f,ImGui::GetContentRegionAvail().y-footer-24),textSize_,follow_,textOptions_,[this](const auto& code){return reinterpret_cast<ImTextureID>(uintptr_t(flags_.get(code)));});
             ImGui::Separator();logControls(s);
             ImGui::EndTabItem();
         }

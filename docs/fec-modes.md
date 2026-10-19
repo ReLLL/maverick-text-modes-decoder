@@ -2,7 +2,7 @@
 read_when: Changing JS8, Olivia, metadata, SNR, or FEC worker lifecycle
 ---
 
-# JS8, Olivia and receive measurements (local 1.0.44)
+# JS8, Olivia and receive measurements
 
 JS8 and Olivia default on. Each remembers an explicit off. CW, RTTY and PSK
 remain independently controlled. The full captured spectrum is surveyed with

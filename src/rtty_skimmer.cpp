@@ -210,7 +210,9 @@ void Skimmer::updateStations(){
         if(s==stations_.end())continue;
         s->center=c->frequency;s->frequency=c->frequency+(result.reverse?-1:1)*c->shift/2;
         s->shift=c->shift;s->baud=result.baud;s->reverse=result.reverse;s->active=seconds_-c->lastDecoded<2;
-        s->observeSnr(radio::spectralSnr(int(size_),binHz_,(s->center-center_)/binHz_,s->shift+2*s->baud,[&](int b){return power_[b];}));
+        // A retained framer lock can outlive RF activity. Only newly accepted
+        // frames qualify the spectrum as a signal SNR observation.
+        if(received)s->observeSnr(radio::spectralSnr(int(size_),binHz_,(s->center-center_)/binHz_,s->shift+2*s->baud,[&](int b){return power_[b];}));
         auto text=c->prefix+result.text;
         if(text.size()>40000)text.erase(0,text.size()-32000);
         if(received||(!text.empty()&&text!=s->text))s->received();

@@ -6,6 +6,7 @@
 #include "rtty_skimmer.h"
 #include "cw_tab.h"
 #include "reception_view.h"
+#include "settings_navigation.h"
 #include <imgui_internal.h>
 #include <iostream>
 #include <stdexcept>
@@ -31,11 +32,11 @@ int main(){try{
     io.GetClipboardTextFn=[](void*){return clipboard.c_str();};
     unsigned char* pixels;int w,h;io.Fonts->GetTexDataAsRGBA32(&pixels,&w,&h);
     TranscriptView view;bool follow=true;ImVec2 textPoint;ImGuiID inputID=0;
-    auto frame=[&](const std::string& text){
+    auto frame=[&](const std::string& text,const radio::TextOptions& options=radio::TextOptions{},const TranscriptView::FlagProvider& flags=TranscriptView::FlagProvider{}){
         ImGui::NewFrame();ImGui::SetNextWindowPos({10,10});ImGui::SetNextWindowSize({800,600});
         ImGui::Begin("Transcript test",nullptr,ImGuiWindowFlags_NoSavedSettings);
         ImGui::PushID(&view);inputID=ImGui::GetID("##decoded_morse");ImGui::PopID();
-        view.draw(text,300,1,follow);
+        view.draw(text,300,1,follow,options,flags);
         for(auto* child:ImGui::GetCurrentWindow()->DC.ChildWindows)
             if(child->ChildId==inputID)textPoint={child->InnerRect.Min.x+15,child->InnerRect.Min.y+10};
         ImGui::End();ImGui::Render();
@@ -124,7 +125,7 @@ int main(){try{
         if(ImGui::BeginPopupModal(title)){ImGui::TextUnformatted("Modal test");ImGui::EndPopup();}
         ImGui::End();ImGui::Render();
     };
-    popupFrame("CW Notebook###cw_notebook_window","CW Settings");
+    popupFrame("CW Notebook###cw_notebook_window","Settings###cw_notebook_settings");
     require(GImGui->OpenPopupStack.Size==1,"Notebook modal fixture did not open");
     notebook::closePopups();require(GImGui->OpenPopupStack.empty(),"Disabled notebook left a modal blocking host input");
     popupFrame("Other plugin","How to use");notebook::closePopups();
@@ -218,6 +219,50 @@ int main(){try{
         ImGui::LogToClipboard();notebook::rxSnr(rx,false);notebook::lastReceived(rx);ImGui::LogFinish();
         require(clipboard.find("RX SNR -14.2 dB (last)")!=std::string::npos&&clipboard.find("119 seconds ago")!=std::string::npos,"Native header hid held SNR or recent reception age");
         ImGui::End();ImGui::Render();
+    }
+    {
+        const std::string rich="CQ DE K1ABC 599 73 ";const auto fakeTexture=reinterpret_cast<ImTextureID>(uintptr_t(123));
+        auto flag=[&](const std::string& code){require(code=="US","Unexpected inline flag country");return fakeTexture;};
+        follow=false;frame(rich,{},flag);frame(rich,{},flag);
+        auto* window=ImGui::FindWindowByName("Transcript test");bool colored=false,hasFlag=false;
+        for(auto* child:window->DC.ChildWindows)if(child->ChildId==inputID){
+            for(const auto& vertex:child->DrawList->VtxBuffer)if(vertex.col==ImGui::GetColorU32(ImVec4{.53f,.78f,.98f,1}))colored=true;
+            for(const auto& command:child->DrawList->CmdBuffer)if(command.TextureId==fakeTexture)hasFlag=true;
+        }
+        require(colored&&hasFlag,"Native transcript omitted callsign color or inline flag texture");
+        view.copyReport(7020000,20,0,false);
+        require(clipboard.find(rich)!=std::string::npos&&clipboard.find("[US]")==std::string::npos,"Display annotations leaked into the original reception report");
+        ImGui::FocusWindow(window);
+        io.MousePos=textPoint;io.MouseDown[0]=true;frame(rich,{},flag);io.MouseDown[0]=false;frame(rich,{},flag);
+        auto* selected=ImGui::GetInputTextState(inputID);require(selected!=nullptr&&ImGui::GetActiveID()==inputID,"Annotated transcript cannot be selected");
+        selected->Stb.select_start=0;selected->Stb.select_end=selected->CurLenW;
+        io.AddKeyEvent(ImGuiKey_ModSuper,true);io.AddKeyEvent(ImGuiKey_C,true);frame(rich,{},flag);
+        io.AddKeyEvent(ImGuiKey_C,false);io.AddKeyEvent(ImGuiKey_ModSuper,false);
+        require(clipboard.find(radio::unicodeFlag("US"))!=std::string::npos,"Selected inline flags did not copy as Unicode");
+        frame(rich+"NEXT ",{},flag);require(selected->HasSelection(),"Appending annotated text lost the selection");
+        frame(rich,{false,false});view.copyReport(7020000,20,0,false);
+        require(clipboard.find(rich)!=std::string::npos,"Disabling annotations changed received text");
+        const radio::TextOptions cautious{true,true,true};
+        const std::string partial="LYL3NU YL3NU ";
+        auto anyFlag=[&](const std::string&){return fakeTexture;};
+        frame(partial,cautious,anyFlag);frame(partial,cautious,anyFlag);
+        ImGui::FocusWindow(window);io.MousePos=textPoint;io.MouseDown[0]=true;
+        frame(partial,cautious,anyFlag);io.MouseDown[0]=false;frame(partial,cautious,anyFlag);
+        selected=ImGui::GetInputTextState(inputID);require(selected!=nullptr&&ImGui::GetActiveID()==inputID,"Guarded transcript cannot be selected");
+        selected->Stb.select_start=0;selected->Stb.select_end=selected->CurLenW;
+        frame(partial+"599 ",cautious,anyFlag);require(selected->HasSelection(),"Ordinary RTTY append cleared selection");
+        const auto corroborated=partial+"599 YL3NU ";frame(corroborated,cautious,anyFlag);
+        require(!selected->HasSelection(),"Removed flag left stale selection indices");
+        view.copyReport(7020000,20,0,false);
+        require(clipboard.find(corroborated)!=std::string::npos&&clipboard.find("[LT]")==std::string::npos,
+            "Cautious RTTY annotations changed the original report");
+        notebook::SettingsNavigation pages;
+        for(int pass=0;pass<3;pass++){
+            ImGui::NewFrame();ImGui::SetNextWindowPos({10,10});ImGui::SetNextWindowSize({740,550});ImGui::Begin("Settings navigation regression",nullptr,ImGuiWindowFlags_NoSavedSettings);
+            pages.draw([&](int page){ImGui::Text("Page %d",page);require(ImGui::GetContentRegionAvail().x>400,"Settings page is clipped by its sidebar");});
+            ImGui::End();ImGui::Render();
+        }
+        require(pages.page==0,"Settings did not open its display/callsign page");
     }
     ImGui::DestroyContext();std::cout<<"Transcript refresh and window presentation checks passed\n";
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}

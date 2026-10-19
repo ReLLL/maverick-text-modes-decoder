@@ -1,5 +1,36 @@
 # Changelog
 
+## 1.0.49 - 2026-10-19
+
+Public release incorporating the local 1.0.43-1.0.48 builds below.
+
+- Withhold an RTTY callsign flag/tag when a one-off token adds one leading
+  letter to a recognized callsign repeated elsewhere in the same transcript.
+  Keep every received character. Repeated longer calls and portable calls
+  retain their annotations; other modes and decoder acquisition are unchanged.
+- Clear stale text-selection indices if later reception removes an ambiguous
+  earlier flag. Ordinary appends preserve selection.
+
+## 1.0.48 - unreleased
+
+- Retain RX SNR from the latest detected signal activity. An old RTTY/PSK
+  decoder lock no longer refreshes the reading after incoming activity stops.
+- Manual CW tone selection no longer qualifies noise as signal SNR. Require
+  detected keying and spectral signal evidence, preserving the decoding path.
+- Keep the last signal reading through noise and refresh it when reception
+  returns, including weaker signals. JS8/Olivia retain decoded-frame SNR.
+
+## 1.0.47 - unreleased
+
+- Replace CW Settings with a paged Settings window: Text & callsigns,
+  CW decoding, Monitoring and Diagnostics. Preferences apply immediately.
+- Add saved callsign/country detection and HAM QSO highlighting options for
+  all receive modes. Show inferred flags inline and recent callsign tags;
+  clicking a tag opens its QRZ.com page in the default browser.
+- Keep received text intact in full reports and logs. Selected annotations
+  copy as Unicode flags. Preserve text selection, Follow and scrolling using
+  the host's existing transcript widget; no extra DSP threads or scans.
+
 ## 1.0.46 - unreleased
 
 - Retain the last valid local RX SNR through inactive periods, with a "last"

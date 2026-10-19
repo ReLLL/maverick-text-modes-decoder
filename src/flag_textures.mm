@@ -10,7 +10,7 @@
 namespace notebook {
 namespace {
 std::vector<unsigned char> pixels(const std::string& code){@autoreleasepool{
-    NSString* glyph=@"\u2690";
+    NSString* glyph=@"\U0001F3F3\uFE0F";
     if(!code.empty()){
         unichar chars[]={0xD83C,unichar(0xDDE6+code[0]-'A'),0xD83C,unichar(0xDDE6+code[1]-'A')};
         glyph=[NSString stringWithCharacters:chars length:4];
@@ -37,11 +37,15 @@ unsigned int upload(const std::vector<unsigned char>& data){
 }
 }
 FlagTextures::~FlagTextures(){for(const auto& entry:textures_)if(entry.second){auto texture=entry.second;glDeleteTextures(1,&texture);}}
-void FlagTextures::draw(const std::string& code){
-    if(!code.empty()&&(code.size()!=2||code[0]<'A'||code[0]>'Z'||code[1]<'A'||code[1]>'Z'))return;
+unsigned int FlagTextures::get(const std::string& code){
+    if(!code.empty()&&(code.size()!=2||code[0]<'A'||code[0]>'Z'||code[1]<'A'||code[1]>'Z'))return 0;
     auto it=textures_.find(code);if(it==textures_.end())it=textures_.emplace(code,upload(pixels(code))).first;
+    return it->second;
+}
+void FlagTextures::draw(const std::string& code){
+    const auto texture=get(code);
     float size=ImGui::GetTextLineHeight();
-    if(it->second)ImGui::Image(reinterpret_cast<ImTextureID>(uintptr_t(it->second)),{size,size});else ImGui::Dummy({size,size});
+    if(texture)ImGui::Image(reinterpret_cast<ImTextureID>(uintptr_t(texture)),{size,size});else ImGui::Dummy({size,size});
     ImGui::SameLine(0,5);
 }
 }

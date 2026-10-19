@@ -16,7 +16,7 @@ inline ImVec4 snrColor(double snr){
 inline void rxSnr(const radio::Reception& r,bool receiving){
     if(std::isfinite(r.snr))ImGui::TextColored(snrColor(r.snr),"RX SNR %+.1f dB%s",r.snr,r.currentSnr(receiving)?"":" (last)");
     else ImGui::TextDisabled("RX SNR --");
-    hint("Received SNR measured here, referenced to 2500 Hz of noise. Red through yellow to green spans -30 to +10 dB; this is not a decoder confidence score. 'Last' retains the most recent valid measurement through gaps or pauses. It is separate from a remote station's report. Different modes use different estimators.");
+    hint("Received SNR measured here, referenced to 2500 Hz of noise. Red through yellow to green spans -30 to +10 dB; this is not a decoder confidence score. 'Last' retains the latest measurement from detected signal activity through gaps or pauses. Noise alone does not replace it. It is separate from a remote station's report. Different modes use different estimators.");
 }
 inline void lastReceived(const radio::Reception& r){
     ImGui::TextDisabled("Last received: %s",radio::receptionAge(r).c_str());

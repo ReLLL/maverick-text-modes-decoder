@@ -12,6 +12,7 @@
 #include "cw_tab.h"
 #include "country_lookup.h"
 #include "flag_textures.h"
+#include "settings_navigation.h"
 #include <map>
 #include <module.h>
 #include <gui/gui.h>
@@ -44,6 +45,8 @@ private:
     void openAnalysisPrompt(int provider,const std::string& prompt);
     void logControls(const cw::Snapshot& s);
     void decoderControls(const cw::Snapshot& s);
+    void settings(const cw::Snapshot& s);
+    void callTags(TranscriptView& view,const std::string& text,const std::string& headerCall={},bool checkExtensions=false);
     void cwStatus(const cw::Snapshot& s);
     void setCWMonitoring(bool enabled);
     void rttyControls();
@@ -68,6 +71,8 @@ private:
     struct RttyView {TranscriptView transcript;bool follow=true,compact=true;std::string seen,rawCache,compactCache,lastCall;radio::Country country;};
     std::map<uint64_t,RttyView> rttyViews_;
     notebook::FlagTextures flags_;
+    radio::TextOptions textOptions_;
+    notebook::SettingsNavigation settingsNavigation_;
     bool rttyEnabled_=false;
     bool pskEnabled_=false;
     bool js8Enabled_=false,oliviaEnabled_=false;

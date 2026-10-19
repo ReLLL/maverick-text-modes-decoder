@@ -49,8 +49,8 @@ void CWNotebook::rttyControls(){
     notebook::flow("Close all tabs");
     if(ImGui::Button("Close all tabs")){if(rtty_)rtty_->closeAll();selectCW_=true;}
     notebook::hint("Close all digital frequency tabs and discard their text. CW keeps its current on/off state. Monitoring continues, so fresh traffic can open new tabs. Copy wanted text first; these tabs are not autosaved.");
-    notebook::flow("CW Settings");if(ImGui::Button("CW Settings"))openNotebookModal(1);
-    notebook::hint("Open CW speed, tone, recovery and diagnostic controls. Digital modes have separate controls in their tabs and Signals.");
+    notebook::flow("Settings");if(ImGui::Button("Settings"))openNotebookModal(1);
+    notebook::hint("Open organized settings for text and callsigns, CW decoding, monitoring and diagnostics. Changes apply immediately and saved display choices are remembered.");
     notebook::flow("How to use");if(ImGui::Button("How to use"))openNotebookModal(2);
     notebook::hint("Open the operating guide for CW, RTTY, PSK, JS8 and Olivia, including tuning, copying, pins and receiver limits.");
     notebook::flow("Signals...");if(ImGui::Button("Signals..."))openNotebookModal(3);
@@ -80,7 +80,7 @@ void CWNotebook::rttyTabs(float footer){
             if(!s.mode.empty()){
                 ImGui::TextDisabled("Last header: Call %s | Grid %s | Remote report %s",s.call.empty()?"--":s.call.c_str(),s.grid.empty()?"--":s.grid.c_str(),s.remoteReport.empty()?"--":s.remoteReport.c_str());
                 notebook::hint("Fields carried in decoded protocol headers, when present. A received Maidenhead grid describes the station's approximate area. Remote reports are separate from the SNR measured by this receiver. Missing fields stay blank.");
-                if(s.mode=="JS8"){
+                if(s.mode=="JS8"&&textOptions_.detectCallsigns){
                     if(view.lastCall!=s.call){view.lastCall=s.call;view.country=radio::callsignCountry(s.call);}
                     if(!view.country.name.empty()){
                         flags_.draw(view.country.flag);ImGui::Text("%s",view.country.name.c_str());
@@ -88,6 +88,9 @@ void CWNotebook::rttyTabs(float footer){
                     notebook::hint("Country/DXCC entity estimated offline from the last received header callsign, including known exact-call exceptions and portable prefixes. A flag represents the associated country. This does not verify identity or locate a transmitter. The received grid is shown separately; no grid is invented from a callsign.");
                 }
             }
+            if(view.rawCache!=s.text){view.rawCache=s.text;view.compactCache=rtty::compactRY(s.text);}
+            auto options=textOptions_;options.checkExtensions=rtty::isRtty(s);
+            callTags(view.transcript,rtty::isRtty(s)&&view.compact?view.compactCache:s.text,s.mode=="JS8"?s.call:"",options.checkExtensions);
             if(ImGui::Button("Copy to clipboard"))view.transcript.copyRTTYReport(s,*snapshot,rtty::isRtty(s)&&view.compact);
             notebook::hint("Copy displayed text with date, local time zone, band, estimated frequency, mode, baud and capture details. RTTY also includes shift and polarity. Turn off Compact RY for every RTTY test letter.");
             notebook::flow("Explain with AI...");
@@ -122,7 +125,7 @@ void CWNotebook::rttyTabs(float footer){
             notebook::hint("Listen through Radio's current audio output. Selects USB / 3.2 kHz with this estimated signal at 2125 Hz; CW relearns at the new dial. Only this button changes tuning; opening a tab does not.");
             ImGui::TextDisabled("Received text is held in these tabs; copy it before closing. CW Markdown logging remains separate.");
             if(view.rawCache!=s.text){view.rawCache=s.text;view.compactCache=rtty::compactRY(s.text);}
-            view.transcript.draw(rtty::isRtty(s)&&view.compact?view.compactCache:s.text,std::max(80.f,ImGui::GetContentRegionAvail().y-footer-24),textSize_,view.follow);
+            view.transcript.draw(rtty::isRtty(s)&&view.compact?view.compactCache:s.text,std::max(80.f,ImGui::GetContentRegionAvail().y-footer-24),textSize_,view.follow,options,[this](const auto& code){return reinterpret_cast<ImTextureID>(uintptr_t(flags_.get(code)));});
             if(view.transcript.popupOpen())controlsPopupOpen_=true;
             ImGui::EndTabItem();
         }

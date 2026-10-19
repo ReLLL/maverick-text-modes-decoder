@@ -125,7 +125,9 @@ void Monitor::frame(const std::vector<rtty::IQ>& spectrum,double rate,double cen
         auto s=std::find_if(stations_.begin(),stations_.end(),[&](const auto& v){return v.id==c.id;});
         if(s==stations_.end())continue;
         s->frequency=s->center=c.frequency+result.offset;s->baud=result.baud;s->psk=true;s->shift=0;
-        s->observeSnr(c.snr);
+        // Lock history alone is not a new measurement. Require demodulated
+        // symbols and a carrier seen in the latest discovery interval.
+        if(fresh&&seconds-c.lastSeen<.25)s->observeSnr(c.snr);
         s->active=seconds-c.lastDecoded<2;auto text=c.prefix+result.text;
         if(text.size()>40000)text.erase(0,text.size()-32000);
         if(fresh)s->received();s->text=std::move(text);

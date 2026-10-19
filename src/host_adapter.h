@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <string>
 #include "rtty_selection.h"
+#include "radio_text.h"
 namespace cw::host {
 #if CW_HOST_BROWN
 inline constexpr bool brown=true;
@@ -26,4 +27,6 @@ void setRttyEnabled(const std::string& instance,bool enabled);
 rtty::Selection rttySelection(const std::string& instance);
 void setRttySelection(const std::string& instance,const rtty::Selection& selection);
 bool listenRTTY(const std::string& receiver,double mark);
+radio::TextOptions textOptions(const std::string& instance);
+void setTextOptions(const std::string& instance,const radio::TextOptions& options);
 }

@@ -2,7 +2,7 @@
 read_when: Changing PSK decoding, discovery, resource limits, or receive lifecycle
 ---
 
-# PSK31 / PSK63 monitor (local 1.0.43 candidate)
+# PSK31 / PSK63 monitor
 
 **PSK31/63** enables receive-only BPSK at 31.25 and 62.5 baud across captured IQ.
 Both rates are checked together, independently of Radio's demodulator, audio

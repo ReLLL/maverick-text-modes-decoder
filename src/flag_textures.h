@@ -12,6 +12,7 @@ public:
     FlagTextures(const FlagTextures&)=delete;
     FlagTextures& operator=(const FlagTextures&)=delete;
     void draw(const std::string& code);
+    unsigned int get(const std::string& code);
 private:
     std::map<std::string,unsigned int> textures_;
 };

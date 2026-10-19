@@ -10,7 +10,8 @@
 namespace radio {
 inline double monotonicSeconds(){return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();}
 inline double utcSeconds(){return std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();}
-// Owned by the decoder worker. Missing observations never erase valid history.
+// Owned by the decoder worker. Callers qualify actual signal activity before
+// observing SNR. Missing observations never erase valid signal history.
 struct Reception {
     double snr=std::numeric_limits<double>::quiet_NaN(),snrAt=0;
     double lastTextAt=0,lastTextUtc=0;

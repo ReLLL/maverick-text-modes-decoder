@@ -9,6 +9,19 @@
 #include <gui/gui.h>
 #include <signal_path/signal_path.h>
 namespace cw::host {
+radio::TextOptions textOptions(const std::string& instance){
+    radio::TextOptions options;core::configManager.acquire();const auto& instances=core::configManager.conf["moduleInstances"];
+    if(instances.contains(instance)&&instances[instance].is_object()){
+        const auto& module=instances[instance];
+        if(module.contains("detectCallsigns")&&module["detectCallsigns"].is_boolean())options.detectCallsigns=module["detectCallsigns"].get<bool>();
+        if(module.contains("highlightHamTerms")&&module["highlightHamTerms"].is_boolean())options.highlightTerms=module["highlightHamTerms"].get<bool>();
+    }
+    core::configManager.release();return options;
+}
+void setTextOptions(const std::string& instance,const radio::TextOptions& options){
+    core::configManager.acquire();auto& module=core::configManager.conf["moduleInstances"][instance];
+    module["detectCallsigns"]=options.detectCallsigns;module["highlightHamTerms"]=options.highlightTerms;core::configManager.release(true);
+}
 std::filesystem::path logFolder(){
     // Explicit process-local override for isolated replay/diagnostic profiles.
     if(const char* folder=std::getenv("CW_NOTEBOOK_LOG_DIR")){

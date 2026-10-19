@@ -264,10 +264,23 @@ void Decoder::findTone() {
     floor=std::max(floor,local[local.size()/2]);
     const double measuredTone=manualTone_>0?manualTone_:double(best)*processingRate/length;
     stats_.snrDb=radio::spectralSnr(int(length/2),double(processingRate)/length,measuredTone*length/processingRate,100,[&](int b){return std::norm(fft[b]);},false);
-    if(manualTone_>0){stats_.tone=manualTone_;stats_.signal=true;stats_.reception.observeSnr(stats_.snrDb);return;}
+    if(manualTone_>0){
+        // Selecting a tone bypasses auto acquisition, not signal evidence.
+        const int bin=std::clamp(int(std::lround(manualTone_*length/processingRate)),1,int(length/2)-2);
+        float selectedPeak=0;local.clear();
+        for(int i=std::max(1,bin-16);i<std::min(int(length/2)-1,bin+17);++i){
+            if(std::abs(i-bin)<=1)selectedPeak=std::max(selectedPeak,std::norm(fft[i]));
+            else if(std::abs(i-bin)>3)local.push_back(std::norm(fft[i]));
+        }
+        std::sort(local.begin(),local.end());
+        const float selectedFloor=local[local.size()/2];
+        if(key_&&selectedPeak>1e-10&&selectedPeak>selectedFloor*20)
+            stats_.reception.observeSnr(stats_.snrDb);
+        stats_.tone=manualTone_;stats_.signal=true;return;
+    }
     stats_.snr=10*std::log10((peak+1e-15f)/(floor+1e-15f));
     stats_.signal=stats_.snr>13 && peak>1e-10;
-    if(stats_.signal)stats_.reception.observeSnr(stats_.snrDb);
+    if(stats_.signal&&key_)stats_.reception.observeSnr(stats_.snrDb);
     if(stats_.signal) {
         float a=std::abs(fft[best-1]),b=std::abs(fft[best]),c=std::abs(fft[best+1]);
         float offset=.5f*(a-c)/(a-2*b+c-1e-20f);

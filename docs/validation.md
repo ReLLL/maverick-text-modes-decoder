@@ -4,6 +4,102 @@ read_when: Changing thresholds, supported ranges, compatibility, or reliability 
 
 # Validation
 
+## Local 1.0.49 conservative RTTY annotations, 2026-10-19
+
+The supplied YL3NU/LYL3NU pattern first failed a production-parser regression:
+the single-letter extension acquired a conflicting country flag. The new
+RTTY-only context check withholds that flag/tag when the shorter recognized
+call occurs at least twice and the longer token occurs once. Every received
+character remains intact. X/G/B examples, lowercase text, incomplete tokens,
+hashed calls, provisional text, portable calls and repeated longer calls are
+covered. This does not prove which callsign was transmitted.
+
+Fifteen core targets and five installer tests pass. Both matching host modules
+build, both native-ImGui suites pass, and the changed parser/transcript pass
+ASan/UBSan. A widget regression preserves selection during ordinary appends
+and clears it safely when later corroboration removes an earlier flag. Copied
+reports retain the original raw text. One Release run used 6.36 CPU milliseconds
+per 100,000-character guarded parse versus 4.42 without the guard; parsing
+remains cached until text/options change and counts track at most 256 tokens.
+
+This candidate changes no DSP, acquisition, framing, tone, baud, scan budgets
+or worker lifecycle. It improves annotation caution, not RF decoding accuracy.
+Version 1.0.49 was installed into Brown on 2026-10-19 while the host was closed.
+The loaded module matches the tested Release binary, SHA-256
+`07b3b850c1bfe550bea18f7f065122464e6964ddbe19cf50ce1f98ca97276407`.
+Native monitoring and live reception were observed after launch. All 34 saved
+CW log prefixes verify; Radio and RTL source configuration are unchanged.
+The dial and capture center changed during live use after launch; no retune
+was performed by this installation. HTTP remains off. The installer backed up
+the previous plugin and configuration.
+
+Release preparation repeated all fifteen core targets, five installer checks,
+all fifteen ASan/UBSan targets, both matching host builds and both native-ImGui
+suites successfully. Both 15-file host packages match their binary/manifests
+and exclude project instructions, receiver data and personal build paths.
+
+## Local 1.0.48 signal-qualified SNR retention, 2026-10-17
+
+A production-decoder regression reproduced manual CW treating noise as a
+retained signal measurement, and RTTY replacing its reading after frames
+stopped (20.53 to 3.40 dB in the deterministic fixture). Requiring keyed
+spectral evidence for CW and newly accepted RTTY frames fixes both cases.
+PSK now requires fresh symbols and a recently detected carrier before refreshing
+metadata. Decoder acquisition, text and thresholds are unchanged.
+
+The new signal -> noise -> returning-signal checks pass for automatic/manual
+CW, RTTY and both PSK rates. They verify that noise neither changes the held
+value nor refreshes its measurement time, while returning signals update it.
+All fifteen core targets, five installer checks and fifteen ASan/UBSan targets
+pass. Both matching host modules build. Existing JS8/Olivia observations remain
+attached to accepted decoded frames. There is no additional FFT, scanner or
+worker; the existing host UI widget is unchanged.
+
+Version 1.0.48 is installed and loaded in live Brown after the approved restart.
+Installed SHA-256: `8eaf9d266e1025a76814b2024b80077c0dddeb51e452e934ae32af25d3094c2f`.
+All 34 saved CW log prefixes verify. Source, rate, gain, decimation and Radio
+configuration are preserved; normal HTTP remains off. The saved 14.217 MHz USB
+dial and capture center were restored after Brown's startup VFO clamp.
+Only three digital-tab reports were exported before UI interference prevented
+completing the backup.
+The user approved restarting with twelve open memory-only digital tabs.
+Native quit input could not complete through the changing UI; the exact host
+process was terminated before installation. Both 15-file host archives match
+their binary/manifests and exclude private paths and project instructions.
+These fixture and startup checks do not establish field accuracy or a long soak.
+
+## Local 1.0.47 Settings and transcript annotations, 2026-10-17
+
+Fourteen core targets, five installer checks, fourteen ASan/UBSan targets,
+both matching host UI suites and the standard-host transcript memory check
+pass. Both host modules build for arm64, minimum macOS 15.0. The production
+multiline widget tests cover selection during append, Unicode flag copying,
+glyph coloring, annotation toggles and the paged Settings layout. A warm
+100,000-character annotation parse used 5.26 CPU milliseconds in one Release
+run; parsing is cached until text/options change. No DSP workers or spectrum
+scans were added.
+
+An isolated native Brown replay decoded CW, RTTY, PSK31, PSK63, JS8 and Olivia.
+All four Settings pages were inspected. Turning callsign detection off removed
+annotations; turning it back on restored them. Native JS8 and Olivia views
+showed colored callsigns, inline flags and callsign tags. The JS8 pane showed
+the received K1ABC/FN42 header and inferred United States flag/country.
+Finite SNR and last-received timestamps remained unchanged after stopping
+input. The final replay checkpoint reported zero IQ/FEC gaps. QRZ URL encoding
+is tested; no tag was opened and no received text was sent externally.
+
+Version 1.0.47 is installed outside Brown's app bundle and receiving live RF.
+Installed SHA-256: `805545f1a28015e317c33d039c81c73c49ee3c2bdc00bf648b129863507cdd4b`.
+The loaded module matches the Release build. All 34 saved CW log prefixes
+retain their hashes. The three pre-restart digital tabs were privately
+exported; digital tabs remain memory-only. Source, rate, gain, decimation and
+Radio mode/filter configuration were preserved. Brown again clamped the
+saved VFO offset on startup; the native frequency control restored the saved
+14.217 MHz USB dial. Its tuning policy moved the capture center 24.924 kHz
+lower. Normal-profile HTTP is off. Live RTTY also displayed an Italian
+callsign tag and inline flags. These are bounded checks, not RF sensitivity
+or long-soak stability measurements. Public release remains 1.0.42.
+
 ## Local 1.0.46 reception metadata checkpoint, 2026-10-17
 
 The inactive-report SNR regression fails before the fix and passes afterward.

@@ -11,9 +11,21 @@
 #include <locale>
 #include <sstream>
 #include <cmath>
+#include <map>
 
 void TranscriptView::clear(){
-    source_.clear();selection_.clear();buffer_.assign(1,'\0');width_=0;resetSelection_=true;
+    source_.clear();selection_.clear();buffer_.assign(1,'\0');width_=0;resetSelection_=true;markupReady_=false;inkRuns_.clear();
+}
+const std::vector<radio::CallTag>& TranscriptView::callsigns(const std::string& text,const radio::TextOptions& options){
+    if(!markupReady_||markupSource_!=text||!(options_==options)){
+        if(!(options_==options))resetSelection_=true;
+        auto next=radio::markText(text,options);
+        // Later corroboration can remove an earlier flag. Discard stale display
+        // indices instead of copying a different selection after that change.
+        if(markupReady_&&next.display.compare(0,markup_.display.size(),markup_.display)!=0)resetSelection_=true;
+        options_=options;markupSource_=text;markup_=std::move(next);markupReady_=true;markupChanged_=true;
+    }
+    return markup_.calls;
 }
 void TranscriptView::copied(const std::string& text,const char* kind){
     ImGui::SetClipboardText(text.c_str());
@@ -53,20 +65,37 @@ void TranscriptView::copyReport(double frequency,float wpm,float carrierOffset,b
     copied(report.str(),"reception details and displayed text");
 }
 void TranscriptView::update(const std::string& text,float width){
-    if(source_==text && width_==width && fontSize_==ImGui::GetFontSize())return;
+    if(!markupChanged_&&source_==text && width_==width && fontSize_==ImGui::GetFontSize())return;
     if(text.compare(0,source_.size(),source_)!=0 || width_!=width || fontSize_!=ImGui::GetFontSize())resetSelection_=true;
     if(resetSelection_)selection_.clear();
-    source_=text;width_=width;fontSize_=ImGui::GetFontSize();buffer_.clear();
-    const char* p=text.data();const char* end=p+text.size();
+    source_=text;width_=width;fontSize_=ImGui::GetFontSize();buffer_.clear();markupChanged_=false;
+    const auto& display=markup_.display;
+    std::vector<size_t> mapping(display.size()+1);
+    const char* p=display.data();const char* end=p+display.size();
+    auto append=[&](const char* last){while(p<last){mapping[size_t(p-display.data())]=buffer_.size();buffer_.push_back(*p++);}};
     while(p<end){
         const char* paragraph=std::find(p,end,'\n');
         while(p<paragraph){
             const char* next=ImGui::GetFont()->CalcWordWrapPositionA(ImGui::GetFontSize()/ImGui::GetFont()->FontSize,p,paragraph,width);
             if(next<=p)next=p+1; // Decoder output is ASCII, including prosigns.
-            buffer_.insert(buffer_.end(),p,next);p=next;
-            if(p<paragraph){while(p<paragraph && *p==' ')++p;buffer_.push_back('\n');}
+            append(next);
+            if(p<paragraph){while(p<paragraph && *p==' '){mapping[size_t(p-display.data())]=buffer_.size();++p;}buffer_.push_back('\n');}
         }
-        if(p<end){buffer_.push_back('\n');++p;}
+        if(p<end){mapping[size_t(p-display.data())]=buffer_.size();buffer_.push_back('\n');++p;}
+    }
+    mapping.back()=buffer_.size();
+    std::vector<radio::Ink> ink(buffer_.size(),radio::Ink::Plain);std::map<size_t,std::string> flags;
+    for(const auto& span:markup_.spans){
+        const auto first=mapping[span.begin],last=mapping[span.end];
+        std::fill(ink.begin()+first,ink.begin()+last,span.ink);
+        if(span.ink==radio::Ink::Flag&&std::find(buffer_.begin()+first,buffer_.begin()+last,'\n')==buffer_.begin()+last)flags[first]=span.flag;
+    }
+    inkRuns_.clear();float x=0;int row=0;
+    for(size_t i=0;i<buffer_.size();){
+        if(buffer_[i]=='\n'){x=0;++row;++i;continue;}
+        const auto first=i;const auto type=ink[i];const float start=x;
+        while(i<buffer_.size()&&buffer_[i]!='\n'&&ink[i]==type)x+=ImGui::GetFont()->GetCharAdvance(static_cast<unsigned char>(buffer_[i++]))*fontSize_/ImGui::GetFont()->FontSize;
+        if(type!=radio::Ink::Plain)inkRuns_.push_back({start,x,row,type,flags.count(first)?flags[first]:"",first,i});
     }
     buffer_.push_back('\0');
 }
@@ -75,10 +104,14 @@ int TranscriptView::selectionCallback(ImGuiInputTextCallbackData* data){
     int first=std::min(data->SelectionStart,data->SelectionEnd);
     int last=std::max(data->SelectionStart,data->SelectionEnd);
     self.selection_.assign(data->Buf+first,data->Buf+last);
+    for(auto it=self.inkRuns_.rbegin();it!=self.inkRuns_.rend();++it)
+        if(it->ink==radio::Ink::Flag&&!it->flag.empty()&&it->begin>=size_t(first)&&it->end<=size_t(last))
+            self.selection_.replace(it->begin-size_t(first),it->end-it->begin,radio::unicodeFlag(it->flag));
     if(!self.selection_.empty() && ImGui::GetIO().KeySuper && ImGui::IsKeyPressed(ImGuiKey_C))self.copied(self.selection_,"selection");
     return 0;
 }
-void TranscriptView::draw(const std::string& text,float height,float scale,bool& follow){
+void TranscriptView::draw(const std::string& text,float height,float scale,bool& follow,const radio::TextOptions& options,const FlagProvider& flags){
+    callsigns(text,options);
     ImGui::PushID(this);
     ImGui::SetWindowFontScale(scale);
     const auto id=ImGui::GetID("##decoded_morse");
@@ -100,6 +133,7 @@ void TranscriptView::draw(const std::string& text,float height,float scale,bool&
         ImGuiInputTextFlags_ReadOnly|ImGuiInputTextFlags_CallbackAlways,selectionCallback,this);
     ImGui::GetIO().ConfigMacOSXBehaviors=macKeys;
     const bool hovered=ImGui::IsItemHovered();
+    paint(id,flags);
     if(hovered && (ImGui::GetIO().MouseWheel!=0 || (ImGui::GetActiveID()==id && !selection_.empty())))follow=false;
     popupOpen_=ImGui::BeginPopupContextItem("copy_morse");
     if(popupOpen_){

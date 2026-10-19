@@ -1,22 +1,18 @@
 # CW Notebook for SDR++Brown and SDR++
 
-Local 1.0.45 makes the CW tab closable. Its X and the CW checkbox control the
-same receiver state. Off stops CW reception and learning; on reopens the tab
-with fresh timing acquisition. Confirmed text and logs are kept.
-
-Local 1.0.44 candidate adds JS8 at all five speeds, seven common Olivia formats
-and received SNR for CW/RTTY/PSK and the new modes. JS8 header callsigns, grids
-and remote reports appear above the text when present. All native modes default
-on, with independent saved controls. FEC uses one bounded background worker;
-the wide spectrum FFT stays shared. See [FEC modes, metadata and limits](docs/fec-modes.md).
-
-The unpublished 1.0.43 PSK addition remains included: BPSK31/63 shares the RTTY capture and wide
-FFT, with independent control, frequency tabs, tuned-passband priority,
-pins/ignores, metadata copying and Explain with AI. PSK adds eight bounded
-decoder slots alongside RTTY's 16; both share 32 retained tabs.
-See [PSK operation and limits](docs/psk.md). Public release remains 1.0.42.
-
 Decode one CW/Morse signal into a selectable transcript and recoverable Markdown log, alongside RTTY, BPSK31/63, JS8 and Olivia streams in frequency tabs across the captured spectrum. Maintained by [ReLLL](https://github.com/ReLLL). Free and open source under GPL-3.0-or-later.
+
+Version 1.0.49 adds BPSK31/63, all five JS8 speeds and seven common Olivia
+formats to the public RTTY monitor. Modes share capture and spectrum analysis,
+with bounded decoder slots, tuned-passband priority and pins for wanted signals.
+See [PSK operation](docs/psk.md) and [FEC modes and limits](docs/fec-modes.md).
+
+Paged Settings groups decoding, monitoring and display controls. Optional
+callsign flags, QRZ tags and colored HAM terms help read received text.
+Signal-qualified RX SNR stays visible through gaps, and each stream shows its
+last reception time. A conservative RTTY ambiguity check withholds misleading
+prefix-extension flags without changing received characters. See
+[callsigns and display settings](docs/callsigns.md).
 
 If the transcript is hidden or outside the visible area, use **Bring CW Notebook to front** in the sidebar. The window returns centered and in front without interrupting reception. Disabling and re-enabling also reopens it.
 
@@ -29,7 +25,8 @@ If the transcript is hidden or outside the visible area, use **Bring CW Notebook
 - Key and gap durations are held during learning and replayed when timing becomes usable. Long buffers spill to a temporary file instead of dropping their beginning.
 - Speed learning uses the latest 16 marks and recent gaps. Poor evidence leaves timing unchanged; sustained, strongly supported new timing can correct a mistaken automatic speed lock. Manual speed stays fixed.
 - Provisional letters appear after two seconds of detected keying and update as timing improves. The labeled draft is replaced by confirmed replay; only confirmed text is autosaved.
-- CW, USB, LSB, DSB and AM reception follows Radio's full selected passband. AM offers keyed RF carriers or Morse audio tones. CW and received digital streams use tabs; CW Settings and How to use open as modals.
+- CW, USB, LSB, DSB and AM reception follows Radio's full selected passband. AM offers keyed RF carriers or Morse audio tones. CW and received digital streams use tabs; Settings and How to use open as modals.
+- Closing CW turns off its private receiver and learning. Enabling CW reopens its tab with fresh timing acquisition, preserving confirmed text and logs.
 - Readable, resizable text; selection, Cmd+C, and right-click Copy selection / Copy all.
 - **Copy to clipboard** exports the displayed transcript with local SQL-style date/time, weekday, UTC offset, current frequency, speed, and carrier offset.
 - **Explain with AI...** opens ChatGPT, Claude or Gemini in the default browser with an analysis prompt and reception context. The complete prompt is copied for every provider; Gemini and long transcripts require pasting.
@@ -54,7 +51,7 @@ SDR++ forks do not provide a stable plugin ABI. Never interchange the two binari
 | Transcript, Markdown logs, archive/rename, selection and clipboard | Full | Full |
 | Explain with AI in default browser | Full | Full |
 | Receiver modulation and Use CW mode | Native Brown commands | Native SDR++ radio interface |
-| Location context | Brown's native My Grid | Optional Receiver grid in CW Settings; press Enter to save |
+| Location context | Brown's native My Grid | Optional Receiver grid in Settings > Monitoring; press Enter to save |
 | Brown HTTP diagnostic/automation commands | Retained | Host has no equivalent HTTP server |
 
 Each host keeps its own logs and decoder preferences. Changing hosts does not move, erase or merge logs.
@@ -89,7 +86,7 @@ Use the **sdrpp** package and its included `cw_notebook.host.json`; the **brown*
 python3 scripts/install.py --host sdrpp --binary cw_notebook.dylib
 ```
 
-Restart SDR++ and enable CW Notebook. The same decoding and log controls apply. The notebook continues updating when the host sidebar is hidden. For location in AI prompts, open CW Settings, enter a Maidenhead grid and press Enter. An empty grid is reported as unconfigured.
+Restart SDR++ and enable CW Notebook. The same decoding and log controls apply. The notebook continues updating when the host sidebar is hidden. For location in AI prompts, open Settings > Monitoring, enter a Maidenhead grid and press Enter. An empty grid is reported as unconfigured.
 
 The installer checks the package's host manifest before changing files, refuses known profiles belonging to the other host, and preserves an existing disabled-plugin preference. Enable the module in Module Manager if an update finds it disabled. `--host brown` is the default; custom profiles still use `--config-dir`.
 
@@ -127,7 +124,7 @@ Markdown logs use UTC section timestamps. Retuning starts a new frequency sectio
 
 ### Recovery controls
 
-The original decode is the default. The selector above the transcript switches between **Original decode** and **Timing + fade recovery (unverified)**. Repair is enabled for the separate version by default in **CW Settings**. During learning, a labeled provisional section appears after two seconds of detected keying and can be revised every quarter second. Its first-pass speed stays within 5-45 WPM with a modest 20 WPM preference for ambiguous evidence. It does not call the confirmed-output callback or enter the Markdown log. Confirmed replay replaces it; already confirmed text is not retroactively rewritten. Retuning clears the provisional section and its measured intervals.
+The original decode is the default. The selector above the transcript switches between **Original decode** and **Timing + fade recovery (unverified)**. Repair is enabled for the separate version by default in **Settings > CW decoding**. During learning, a labeled provisional section appears after two seconds of detected keying and can be revised every quarter second. Its first-pass speed stays within 5-45 WPM with a modest 20 WPM preference for ambiguous evidence. It does not call the confirmed-output callback or enter the Markdown log. Confirmed replay replaces it; already confirmed text is not retroactively rewritten. Retuning clears the provisional section and its measured intervals.
 
 Recovery follows sudden amplitude fades at the learned element speed, so a previous loud character is less likely to hide a quieter dot. It keeps the original noise-floor and carrier checks. It also filters very short key glitches, estimates uneven character spacing, and relearns timing after a long quiet interval. It can still misinterpret a signal, and cannot reconstruct elements lost below the detectable noise level. No dictionary, station template, repeated-message substitution or vocabulary suggestions are used. Changing messages require no special action.
 
@@ -148,7 +145,7 @@ If receiver samples stop arriving, the plugin retries its private channel after 
 
 ## RTTY monitor
 
-Version 1.0.42 has independent **CW** and **RTTY** toolbar checkboxes. CW pauses and
+The toolbar has independent **CW** and **RTTY** checkboxes. CW pauses and
 resumes the existing decoder while retaining its text and log. RTTY scans
 the captured RF spectrum and opens confirmed streams in frequency tabs, without
 changing Radio's tuning, mode, filter or audio. All eligible pairs inside Radio's
@@ -160,9 +157,10 @@ New tabs keep your current focus. A filled circle before the frequency is green
 for one minute after confirmed activity, then yellow. Every returning burst
 restarts the minute; the trailing dot marks
 unread text. **Close all tabs**
-clears RTTY tabs and pending RTTY text while keeping CW and its log.
+clears digital tabs and pending digital text while preserving CW's current
+enabled/disabled state and its log.
 **Signals...** lets you pin priority frequencies, decode only those pins, and
-ignore unwanted traffic. Choices are remembered. **CW Settings** and **How to
+ignore unwanted traffic. Choices are remembered. **Settings** and **How to
 use** open as modal windows, keeping the tab strip for received signals. Signals
 rows stay fixed until **Refresh list**. Changing notices use a fixed status bar;
 hover it for details and hover controls for explanations. **Compact RY** folds
@@ -186,8 +184,8 @@ a tab. Confirmed text is retained literally, including repeated characters.
 Existing CW Markdown autosave remains separate. The monitor defaults on when
 no preference exists, and remembers your choice per host, including turning it off.
 
-This is an unpublished candidate; building it does not replace the installed
-release. See [RTTY operation, architecture and test evidence](docs/rtty.md).
+Building from source does not replace the installed plugin until you run the
+installer. See [RTTY operation, architecture and test evidence](docs/rtty.md).
 
 ## Build from source
 
