@@ -1,5 +1,20 @@
 # Third-party notices
 
+## Windows SDR# target
+
+SDR# and its SDK are supplied by [Airspy](https://airspy.com/download/).
+SDK reference assemblies are used only for compilation and are not distributed.
+The adapter uses the installed host's native DSP API.
+
+Windows runtime dependencies come from MSYS2 UCRT64: GCC/MinGW-w64 runtime,
+winpthreads and GLFW. Preserve their exact package versions, hashes, licenses
+and corresponding-source provenance with any public Windows package.
+
+Country graphics in `resources/windows-flags` are selected from Twemoji 16.0.1,
+commit `50c7abfe6813680455781862f7b34305cd1eb9f5`, under CC BY 4.0.
+The original `LICENSE-GRAPHICS` and per-file source/hashes are retained.
+Graphics are scaled for display. [Twemoji](https://github.com/jdecked/twemoji).
+
 ## Offline country reference
 
 `resources/cty.dat` is the 23 March 2024 CTY.DAT snapshot used by the matching

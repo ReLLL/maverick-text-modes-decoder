@@ -236,8 +236,13 @@ int main(){try{
         io.MousePos=textPoint;io.MouseDown[0]=true;frame(rich,{},flag);io.MouseDown[0]=false;frame(rich,{},flag);
         auto* selected=ImGui::GetInputTextState(inputID);require(selected!=nullptr&&ImGui::GetActiveID()==inputID,"Annotated transcript cannot be selected");
         selected->Stb.select_start=0;selected->Stb.select_end=selected->CurLenW;
-        io.AddKeyEvent(ImGuiKey_ModSuper,true);io.AddKeyEvent(ImGuiKey_C,true);frame(rich,{},flag);
-        io.AddKeyEvent(ImGuiKey_C,false);io.AddKeyEvent(ImGuiKey_ModSuper,false);
+#ifdef _WIN32
+        constexpr auto copyModifier=ImGuiKey_ModCtrl;
+#else
+        constexpr auto copyModifier=ImGuiKey_ModSuper;
+#endif
+        io.AddKeyEvent(copyModifier,true);io.AddKeyEvent(ImGuiKey_C,true);frame(rich,{},flag);
+        io.AddKeyEvent(ImGuiKey_C,false);io.AddKeyEvent(copyModifier,false);
         require(clipboard.find(radio::unicodeFlag("US"))!=std::string::npos,"Selected inline flags did not copy as Unicode");
         frame(rich+"NEXT ",{},flag);require(selected->HasSelection(),"Appending annotated text lost the selection");
         frame(rich,{false,false});view.copyReport(7020000,20,0,false);

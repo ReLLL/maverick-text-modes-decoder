@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 #include "engine.h"
+#include "product_identity.h"
 #include "transcript_view.h"
 #include "stream_watchdog.h"
 #include "receive_channel.h"
@@ -14,10 +15,14 @@
 #include "flag_textures.h"
 #include "settings_navigation.h"
 #include <map>
+#if CW_HOST_SDRSHARP
+#include "notebook_platform.h"
+#else
 #include <module.h>
 #include <gui/gui.h>
 #include <dsp/sink/handler_sink.h>
 #include <signal_path/signal_path.h>
+#endif
 #include <atomic>
 
 class CWNotebook final:public ModuleManager::Instance {
@@ -35,11 +40,19 @@ public:
         ;
     void sidebar();
     void draw();
+#if CW_HOST_SDRSHARP
+    void receiveWindows(notebook::SharpBlock block);
+    void showWindows(){window_=true;presentWindow_=true;}
+    void hideWindows(){window_=false;}
+    bool windowsVisible()const{return window_;}
+#endif
 private:
     void select(const std::string& stream);
     void detach();
     void metadata();
+#if !CW_HOST_SDRSHARP
     static void audio(dsp::complex_t* samples,int count,void* ctx);
+#endif
     void openPath(const std::string& path,bool reveal);
     void explainWithAI(int provider);
     void openAnalysisPrompt(int provider,const std::string& prompt);
@@ -99,12 +112,14 @@ private:
     uint64_t reconnects_=0;
     bool showRecovery_=false;
     double lastFrequency_=0,lastCenter_=0,lastRate_=0;
+#if !CW_HOST_SDRSHARP
     dsp::sink::Handler<dsp::complex_t> sink_;
     dsp::channel::RxVFO* audioStream_=nullptr;
     EventHandler<std::string> registered_,unregistering_;
     EventHandler<ImGuiContext*> drawHandler_;
     ImGuiID drawHook_=0;
     EventHandler<ImGui::WaterFall::InputHandlerArgs> inputHandler_;
+#endif
     ImVec2 windowMin_{0,0},windowMax_{0,0};
     std::atomic<int> sampleRate_{8000};
     std::atomic<double> frequency_{0};
@@ -126,6 +141,10 @@ private:
     double aiNoticeAt_=-10;
     float speed_=20,pitch_=800,textSize_=1.15;
     int frame_=0;
+#if CW_HOST_SDRSHARP
+    uint64_t sharpSequences_[2]{};
+    bool sharpStarted_[2]{};
+#endif
     uint64_t lastBlocks_=0, lastTranscriptReset_=0;
     double lastAudioTime_=0;
     char filename_[256]{};

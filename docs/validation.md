@@ -4,6 +4,29 @@ read_when: Changing thresholds, supported ranges, compatibility, or reliability 
 
 # Validation
 
+## Maverick rename and Windows preview 1.0.50, 2026-10-19
+
+The existing GitHub repository was renamed in place, preserving earlier
+releases and redirects. Public links and display names use Maverick Text Modes
+Decoder; module/config IDs, log paths and the stable ImGui window ID remain
+unchanged. The installer regression preserves disabled CW/RTTY state and saved
+grid while removing previous menu aliases.
+
+Fifteen shared core targets, six macOS installer tests and both matching native
+ImGui suites pass. Both macOS host modules build. The prior 1.0.50 full
+ASan/UBSan run passed all fifteen core targets. No changed decoder thresholds
+or live Brown installation are included in the rename.
+
+The official Windows SDR# 1.0.0.1921 host loads the separate adapter/native
+worker. The operator confirmed synthetic CW/RTTY reception; CW log content and
+parent-exit cleanup were checked, then synthetic recordings/logs removed.
+Eight native decoder/core targets, the real Windows transcript suite,
+stop/retune/filter/epoch IPC test and five installer scenarios pass. Production
+SDK downconversion/resampling/filtering passes at 192 kS/s through 3.2 MS/s
+without modifying host buffers. Detailed evidence and emulated queue-gap
+limits are recorded in [Windows preview](WINDOWS.md). This does not establish
+on-air sensitivity, gap-free full-rate reception or long-soak stability.
+
 ## Local 1.0.49 conservative RTTY annotations, 2026-10-19
 
 The supplied YL3NU/LYL3NU pattern first failed a production-parser regression:

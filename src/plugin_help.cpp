@@ -28,11 +28,11 @@ void CWNotebook::operatingGuide(){
     ImGui::Spacing();ImGui::TextWrapped("Tabs show estimated mark frequency rounded to 1 Hz. Signals lists pair centers before polarity is known. Receiver calibration, noise and FFT resolution limit accuracy. RTTY text stays in memory; copy it before closing or quitting. Weak, overlapping or unsupported signals may be missed; two tones alone do not prove RTTY.");
     ImGui::Spacing();ImGui::TextDisabled("45.45 / 50 / 75 / 100 baud | 170 / 200 / 425 / 450 / 850 Hz | five-bit ITA2, both polarities");
     ImGui::Spacing();ImGui::Separator();ImGui::Spacing();
-    ImGui::TextColored(notebook::brass,"CW notebook");
+    ImGui::TextColored(notebook::brass,"Maverick Text Modes Decoder");
     ImGui::TextWrapped("Turn CW on to open its tab and start fresh timing learning. Closing the tab's X or turning CW off stops its private receiver and learning while retaining confirmed text and logs. Other digital modes continue. Select CW, USB, LSB, DSB or AM and place one Morse signal inside Radio's filter. Narrow the filter to exclude nearby signals. USB receives above the dial; LSB below; DSB and AM on either side. AM offers keyed RF carrier or AM audio tone input.");
     ImGui::Spacing();ImGui::TextWrapped("Mixed dot/dash evidence establishes timing. Provisional text can appear after about two seconds and may change; only confirmed text is autosaved. Manual WPM can interpret held intervals. Default automatic speed is 5-45 WPM; Settings > CW decoding offers manual controls and an extended range.");
     ImGui::Spacing();ImGui::TextWrapped("Changing frequency starts fresh timing and a new line. Relearn restarts detection and discards held intervals while keeping confirmed text. Original and Timing + fade recovery remain separate; changing views does not rewrite the original.");
-    ImGui::Spacing();ImGui::TextWrapped("Select text and press Cmd+C, or right-click for copy options. Follow changes scrolling only. Clear view keeps the log. Clear log archives the previous file before clearing. Markdown autosave applies to CW; RTTY copying is separate.");
+    ImGui::Spacing();ImGui::TextWrapped("Select text and press %s, or right-click for copy options. Follow changes scrolling only. Clear view keeps the log. Clear log archives the previous file before clearing. Markdown autosave applies to CW; RTTY copying is separate.",notebook::copyShortcut);
 }
 void CWNotebook::notebookModals(const cw::Snapshot& s){
     const auto* viewport=ImGui::GetMainViewport();

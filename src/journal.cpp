@@ -15,7 +15,7 @@
 namespace cw {
 namespace {
 void check(bool ok,const char* action){if(!ok)throw std::runtime_error(std::string(action)+": "+std::strerror(errno));}
-const std::string header="# CW reception log\n\nDecoded locally with CW Notebook. Times are UTC.\nAutomatic decoding can contain errors; `[?]` marks unrecognized Morse.\n";
+const std::string header="# CW reception log\n\nDecoded locally with Maverick Decoder. Times are UTC.\nAutomatic decoding can contain errors; `[?]` marks unrecognized Morse.\n";
 }
 std::string utc(const char* format){auto now=std::time(nullptr);std::tm t{};gmtime_r(&now,&t);char buf[80];std::strftime(buf,sizeof(buf),format,&t);return buf;}
 Journal::Journal(std::filesystem::path folder):folder_(std::move(folder)){}

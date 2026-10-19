@@ -12,10 +12,10 @@
 #include <unistd.h>
 
 extern char** environ;
-SDRPP_MOD_INFO{"cw_notebook","CW notebook with parallel RTTY and PSK monitoring","ReLLL",CW_VERSION_MAJOR,CW_VERSION_MINOR,CW_VERSION_PATCH,1};
+SDRPP_MOD_INFO{"cw_notebook",notebook::productName,"ReLLL",CW_VERSION_MAJOR,CW_VERSION_MINOR,CW_VERSION_PATCH,1};
 CWNotebook::CWNotebook(std::string name):name_(std::move(name)),engine_(cw::host::logFolder()){
     auto grid=cw::host::grid(name_);std::snprintf(grid_,sizeof(grid_),"%s",grid.c_str());
-    gui::menu.registerEntry(name_,[](void* ctx){static_cast<CWNotebook*>(ctx)->sidebar();},this,this);
+    gui::menu.registerEntry(notebook::shortName,[](void* ctx){static_cast<CWNotebook*>(ctx)->sidebar();},this,this);
 #if CW_HOST_BROWN
     drawHandler_={[](ImGuiContext*,void* ctx){static_cast<CWNotebook*>(ctx)->draw();},this};
     gui::mainWindow.onWaterfallDrawn.bindHandler(&drawHandler_);
@@ -32,7 +32,7 @@ CWNotebook::CWNotebook(std::string name):name_(std::move(name)),engine_(cw::host
         const bool inside=p.x>=self->windowMin_.x && p.x<=self->windowMax_.x && p.y>=self->windowMin_.y && p.y<=self->windowMax_.y;
         const bool clicked=ImGui::IsMouseClicked(0)||ImGui::IsMouseClicked(1)||ImGui::IsMouseClicked(2);
         const bool down=ImGui::IsMouseDown(0)||ImGui::IsMouseDown(1)||ImGui::IsMouseDown(2);
-        auto* window=ImGui::FindWindowByName("CW Notebook###cw_notebook_window");
+        auto* window=ImGui::FindWindowByName(notebook::windowName);
         auto* active=GImGui->ActiveIdWindow;
         const bool focusedControl=active && window && active->RootWindow==window && ImGui::GetActiveID()!=0;
         if(clicked && (inside || self->transcript_.popupOpen() || self->controlsPopupOpen_))self->ownsMouseGesture_=true;
@@ -63,7 +63,7 @@ CWNotebook::~CWNotebook(){
     gui::waterfall.onInputProcess.unbindHandler(&inputHandler_);
     sigpath::sinkManager.onStreamRegistered.unbindHandler(&registered_);
     sigpath::sinkManager.onStreamUnregister.unbindHandler(&unregistering_);
-    detach();gui::menu.removeEntry(name_);
+    detach();gui::menu.removeEntry(notebook::shortName);
 }
 void CWNotebook::postInit(){
     textOptions_=cw::host::textOptions(name_);

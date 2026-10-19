@@ -6,7 +6,10 @@
 #include "rtty_selection.h"
 #include "radio_text.h"
 namespace cw::host {
-#if CW_HOST_BROWN
+#if CW_HOST_SDRSHARP
+inline constexpr bool brown=false;
+inline constexpr const char* name="SDR#";
+#elif CW_HOST_BROWN
 inline constexpr bool brown=true;
 inline constexpr const char* name="SDR++Brown";
 #else

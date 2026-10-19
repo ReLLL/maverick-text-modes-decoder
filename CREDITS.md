@@ -2,7 +2,7 @@
 
 ## Project
 
-CW Notebook is maintained by [ReLLL](https://github.com/ReLLL). Its CW detector, timing engine, recoverable journal, transcript integration and installer were developed for this project. Contributions from the community are welcome and will be credited in the changelog and Git history.
+Maverick Text Modes Decoder is maintained by [ReLLL](https://github.com/ReLLL). Its CW detector, timing engine, recoverable journal, transcript integration and installer were developed for this project. Contributions from the community are welcome and will be credited in the changelog and Git history.
 
 ## Host and dependencies
 
@@ -14,7 +14,7 @@ CW Notebook is maintained by [ReLLL](https://github.com/ReLLL). Its CW detector,
 - **[Dear ImGui](https://github.com/ocornut/imgui)**  -  ocornut and contributors. Immediate-mode interface, multiline selection and context menus, provided by the host. MIT.
 - **[JSON for Modern C++](https://github.com/nlohmann/json)**  -  nlohmann and contributors. Brown's bundled JSON header is used for module commands/status and configuration interfaces. MIT.
 - **[stb_textedit](https://github.com/nothings/stb)**  -  nothings and contributors. Text-editing structures included by the host's Dear ImGui headers. Dual MIT/public-domain license; MIT notice retained.
-- **[VOLK](https://www.libvolk.org/)** and **[FFTW](https://www.fftw.org/)**  -  their respective authors and contributors. DSP dependencies of Brown whose development headers are needed when compiling against Brown's interfaces. CW Notebook links to Brown's bundled VOLK for channel filtering. The plugin does not ship separate copies of these libraries.
+- **[VOLK](https://www.libvolk.org/)** and **[FFTW](https://www.fftw.org/)**  -  their respective authors and contributors. DSP dependencies of Brown whose development headers are needed when compiling against Brown's interfaces. The macOS plugin links to Brown's bundled VOLK for channel filtering. The plugin does not ship separate copies of these libraries.
 - **[Fldigi](https://github.com/w1hkj/fldigi)** - Dave Freese, W1HKJ, and contributors. The ASCII PSK Varicode table is adapted from fldigi's GPL-3.0-or-later table, itself adapted from gmfsk. The PSK demodulator is original project code.
 - **[gfsk8-modem-clean](https://github.com/jfrancis42/gfsk8-modem-clean)** - standalone JS8 DSP and message unpacking, derived from JS8Call/WSJT-X. GPL-3.0. Credits include Jordan Sherer, KN4CRD, Allan Bazinet, W6BAZ, the WSJT-X authors and contributors. Pinned source and local changes: `vendor/UPSTREAM.md`.
 - **[Olivia / Fldigi](https://github.com/w1hkj/fldigi)** - Pawel Jalocha's MFSK/FEC templates and supporting DSP, maintained by Dave Freese and contributors. GPL-3.0-or-later. Receive integration and resource limits are project code.

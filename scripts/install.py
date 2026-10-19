@@ -58,7 +58,8 @@ def install(binary: Path, root: Path, host: str = "brown") -> Path:
         modules.append(str(target))
     instances["CW Notebook"] = dict(current or {})
     instances["CW Notebook"].update({"enabled": current.get("enabled", True) if current else True, "module": "cw_notebook"})
-    data["menuElements"] = [{"name": "CW Notebook", "open": True}] + [x for x in menu if x["name"] != "CW Notebook"]
+    aliases = {"CW Notebook", "Maverick Decoder", "Maverick CW / RTTY / JS8 / Olivia / PSK31 / PSK63 Decoder", "Maverick Text Modes Decoder: CW / RTTY / JS8 / Olivia / PSK31 / PSK63", "Maverick Text Modes Decoder"}
+    data["menuElements"] = [{"name": "Maverick Text Modes Decoder", "open": True}] + [x for x in menu if x["name"] not in aliases]
     encoded = (json.dumps(data, indent=4) + "\n").encode()
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d-%H%M%S-%fZ")
     backup = root / "cw-notebook-backups" / stamp
@@ -117,7 +118,7 @@ def main() -> int:
     except (OSError, ValueError) as error:
         print(f"Install failed: {error}", file=sys.stderr)
         return 1
-    print(f"Installed CW Notebook for {name}. Restart {name} to load it.")
+    print(f"Installed Maverick Text Modes Decoder for {name}. Restart {name} to load it.")
     print(f"Configuration and previous plugin backup: {backup}")
     return 0
 

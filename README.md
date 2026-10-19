@@ -1,4 +1,10 @@
-# CW Notebook for SDR++Brown and SDR++
+# Maverick Text Modes Decoder: CW / RTTY / JS8 / Olivia / PSK31 / PSK63
+
+For SDR++, SDR++Brown and SDR#.
+
+Previously CW Notebook. Existing SDR++/Brown plugin identifiers, settings,
+log folders and update compatibility are retained. Development version 1.0.50
+adds a Windows SDR# preview. See [Windows installation and tested limits](docs/WINDOWS.md).
 
 Decode one CW/Morse signal into a selectable transcript and recoverable Markdown log, alongside RTTY, BPSK31/63, JS8 and Olivia streams in frequency tabs across the captured spectrum. Maintained by [ReLLL](https://github.com/ReLLL). Free and open source under GPL-3.0-or-later.
 
@@ -14,7 +20,7 @@ last reception time. A conservative RTTY ambiguity check withholds misleading
 prefix-extension flags without changing received characters. See
 [callsigns and display settings](docs/callsigns.md).
 
-If the transcript is hidden or outside the visible area, use **Bring CW Notebook to front** in the sidebar. The window returns centered and in front without interrupting reception. Disabling and re-enabling also reopens it.
+If the transcript is hidden or outside the visible area, use **Bring Maverick Decoder to front** in the sidebar. The window returns centered and in front without interrupting reception. Disabling and re-enabling also reopens it.
 
 ## Features
 
@@ -27,7 +33,7 @@ If the transcript is hidden or outside the visible area, use **Bring CW Notebook
 - Provisional letters appear after two seconds of detected keying and update as timing improves. The labeled draft is replaced by confirmed replay; only confirmed text is autosaved.
 - CW, USB, LSB, DSB and AM reception follows Radio's full selected passband. AM offers keyed RF carriers or Morse audio tones. CW and received digital streams use tabs; Settings and How to use open as modals.
 - Closing CW turns off its private receiver and learning. Enabling CW reopens its tab with fresh timing acquisition, preserving confirmed text and logs.
-- Readable, resizable text; selection, Cmd+C, and right-click Copy selection / Copy all.
+- Readable, resizable text; selection, Cmd+C on macOS / Ctrl+C on Windows, and right-click Copy selection / Copy all.
 - **Copy to clipboard** exports the displayed transcript with local SQL-style date/time, weekday, UTC offset, current frequency, speed, and carrier offset.
 - **Explain with AI...** opens ChatGPT, Claude or Gemini in the default browser with an analysis prompt and reception context. The complete prompt is copied for every provider; Gemini and long transcripts require pasting.
 - Digital frequency tabs offer their own **Explain with AI...** button, using that tab's received text and mode metadata. RTTY includes baud, shift and polarity; JS8 includes received header fields.
@@ -38,11 +44,13 @@ If the transcript is hidden or outside the visible area, use **Bring CW Notebook
 - Original decode plus an optional timing-recovery view. No vocabulary correction or suggestions.
 - Local processing. No accounts, microphone permission, virtual audio cable, telemetry, or network decoder.
 
-## Compatibility
+## Download and installation
+
+### Platform requirements
 
 Separate binaries target **Apple Silicon Macs, macOS 15 or newer**. Brown remains the primary, native host with its full integration. The Brown build targets **SDR++Brown 1.2.1, August 4, 2026 build**; the standard build targets **SDR++ 1.2.0, May 28, 2024 build**. Both are tested on macOS 26. Older macOS versions meeting the build target have not been tested.
 
-SDR++ forks do not provide a stable plugin ABI. Never interchange the two binaries. A different host build may require rebuilding against its matching headers. Intel, Windows, Linux host plugins and other forks are not currently validated. The standalone decoder tests need neither host.
+SDR++ forks do not provide a stable plugin ABI. Never interchange the two binaries. A different host build may require rebuilding against its matching headers. Intel macOS, Linux host plugins and other forks are not currently validated. The Windows SDR# preview targets official x64 .NET 9 revision 1.0.0.1921; see [Windows requirements and limits](docs/WINDOWS.md). The standalone decoder tests need neither host.
 
 | Capability | SDR++Brown (primary) | Standard SDR++ |
 | --- | --- | --- |
@@ -58,10 +66,10 @@ Each host keeps its own logs and decoder preferences. Changing hosts does not mo
 
 This is an independent community plugin, not an official host release. The binaries are not Developer ID signed or notarized. If macOS or your host rejects one, build locally with matching headers; do not modify the host's signature or disable security protections.
 
-## Install
+### SDR++Brown installation
 
 1. Install the compatible [SDR++Brown](https://github.com/sannysanoff/SDRPlusPlusBrown), launch it once, then **quit it**.
-2. Download the Apple Silicon ZIP and its `SHA256SUMS.txt` from [Releases](https://github.com/ReLLL/cw-notebook/releases/latest).
+2. Download the Apple Silicon ZIP and its `SHA256SUMS.txt` from [Releases](https://github.com/ReLLL/maverick-text-modes-decoder/releases/latest).
 3. In Terminal, open the download folder and verify the ZIP:
 
    ```sh
@@ -74,7 +82,7 @@ This is an independent community plugin, not an official host release. The binar
    python3 scripts/install.py --binary cw_notebook.dylib
    ```
 
-5. Restart Brown. **CW Notebook** appears in the sidebar. Start the receiver, choose **CW**, **USB**, **LSB**, **DSB** or **AM** in Radio, and tune one Morse signal inside its filter.
+5. Restart Brown. **Maverick Decoder** appears in the sidebar. Start the receiver, choose **CW**, **USB**, **LSB**, **DSB** or **AM** in Radio, and tune one Morse signal inside its filter.
 
 Python 3 is required; no Python packages are needed. The installer refuses to run while Brown is open and checks the binary architecture. It backs up the configuration and previous plugin, then installs outside the signed app bundle.
 
@@ -86,7 +94,7 @@ Use the **sdrpp** package and its included `cw_notebook.host.json`; the **brown*
 python3 scripts/install.py --host sdrpp --binary cw_notebook.dylib
 ```
 
-Restart SDR++ and enable CW Notebook. The same decoding and log controls apply. The notebook continues updating when the host sidebar is hidden. For location in AI prompts, open Settings > Monitoring, enter a Maidenhead grid and press Enter. An empty grid is reported as unconfigured.
+Restart SDR++ and enable Maverick Decoder. The same decoding and log controls apply. The notebook continues updating when the host sidebar is hidden. For location in AI prompts, open Settings > Monitoring, enter a Maidenhead grid and press Enter. An empty grid is reported as unconfigured.
 
 The installer checks the package's host manifest before changing files, refuses known profiles belonging to the other host, and preserves an existing disabled-plugin preference. Enable the module in Module Manager if an update finds it disabled. `--host brown` is the default; custom profiles still use `--config-dir`.
 
@@ -108,7 +116,7 @@ To uninstall, disable/remove the **CW Notebook** instance in Module Manager. Wit
 
 ## Receiving Morse
 
-1. Choose **CW**, **USB**, **LSB**, **DSB** or **AM** and put one Morse signal inside Radio's filter. USB captures above the dial, LSB below it, and DSB/AM on both sides. CW Notebook follows the full selected width, including the tested Brown build's 12 kHz sideband and 15 kHz AM maxima; narrow it to exclude nearby stations. In AM choose **Keyed RF carrier** for ordinary on/off CW (default), or **AM audio tones** for Morse modulating a carrier. Speaker mute does not stop decoding. Voice, overlapping carriers and interference can produce incorrect letters; this remains a one-signal decoder.
+1. Choose **CW**, **USB**, **LSB**, **DSB** or **AM** and put one Morse signal inside Radio's filter. USB captures above the dial, LSB below it, and DSB/AM on both sides. Maverick Decoder follows the full selected width, including the tested Brown build's 12 kHz sideband and 15 kHz AM maxima; narrow it to exclude nearby stations. In AM choose **Keyed RF carrier** for ordinary on/off CW (default), or **AM audio tones** for Morse modulating a carrier. Speaker mute does not stop decoding. Voice, overlapping carriers and interference can produce incorrect letters; this remains a one-signal decoder.
 2. Tune another station or band normally. Acquisition restarts automatically; the next decoded text starts on one new line. Earlier text remains. Changing modulation also clears unfinished acquisition and starts a new text line. Manual speed/tone locks are released by default; disable **Release manual locks when tuning a new station** in CW Settings to retain them. An intentional Pause remains paused.
 3. Learning starts from zero after retuning. Key/gap durations stay buffered until mixed dot/dash evidence and a character gap establish timing. A clean D can unlock at its first character gap. Ambiguous sequences show a labeled provisional decode after about two seconds; confirmed output waits for stronger evidence. Silence retains the buffer. Manual WPM in **CW Settings** can decode held intervals. **Relearn**, retuning, tone changes and stream resets discard uncommitted intervals; confirmed text remains.
 4. **Follow** controls automatic scrolling only. Clicking never freezes new text. Selecting or scrolling back holds the scroll position while text keeps arriving; enable Follow to jump to the latest.
@@ -193,10 +201,10 @@ Install Xcode Command Line Tools and CMake. Homebrew headers needed by Brown's i
 
 ```sh
 brew install cmake fftw volk
-git clone https://github.com/ReLLL/cw-notebook.git
+git clone https://github.com/ReLLL/maverick-text-modes-decoder.git
 git clone https://github.com/sannysanoff/SDRPlusPlusBrown.git
 git -C SDRPlusPlusBrown checkout 679f48deee5299a199d15d30e6e785fac6054896
-cd cw-notebook
+cd maverick-text-modes-decoder
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
   -DBROWN_SOURCE="../SDRPlusPlusBrown" \
   -DBROWN_APP="/Applications/SDR++Brown.app" \
@@ -245,7 +253,11 @@ Details: [architecture](docs/architecture.md), [validation](docs/validation.md),
 
 ## Contribute and license
 
-Bug reports, patches, decoder improvements and ports are welcome through [Issues](https://github.com/ReLLL/cw-notebook/issues) and pull requests. See [CONTRIBUTING.md](CONTRIBUTING.md).
+Bug reports, patches, decoder improvements and ports are welcome through [Issues](https://github.com/ReLLL/maverick-text-modes-decoder/issues) and pull requests. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+For feedback, contact [@FoxOnTheRunTr on Twitter/X](https://x.com/FoxOnTheRunTr).
+
+Also try [Kondor Weak Signal Modes Decoder: FT8 / FT4 / WSPR / FST4 / FST4W / JS8 / Q65](https://github.com/ReLLL/kondor-weak-signal-modes-decoder) for weak-signal reception, DX mapping and reception logging. Test both plugins and share reception reports, bugs and ideas through [GitHub Issues](https://github.com/ReLLL/maverick-text-modes-decoder/issues) or [@FoxOnTheRunTr on Twitter/X](https://x.com/FoxOnTheRunTr).
 
 Copyright © 2026 ReLLL and contributors. Licensed under **GNU GPL version 3 or, at your option, any later version**. You may use, study, modify and redistribute the project, including commercially, under that license. Distributed derivatives must preserve the applicable license and source obligations. No warranty is provided.
 

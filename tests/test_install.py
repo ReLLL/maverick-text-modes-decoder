@@ -33,7 +33,7 @@ class InstallerTests(unittest.TestCase):
         self.assertEqual((backup / target.name).read_bytes(), b"new plugin")
         data = json.loads(self.config.read_text())
         self.assertEqual(data["modules"].count(str(target)), 1)
-        self.assertEqual(sum(x["name"] == "CW Notebook" for x in data["menuElements"]), 1)
+        self.assertEqual(sum(x["name"] == "Maverick Text Modes Decoder" for x in data["menuElements"]), 1)
         self.assertEqual(data["frequency"], 7000000)
 
     def test_bad_config_changes_nothing(self):
@@ -42,6 +42,16 @@ class InstallerTests(unittest.TestCase):
             installer.install(self.binary, self.root)
         self.assertEqual(self.config.read_text(), '{"modules": "bad"}')
         self.assertFalse((self.root / "plugins").exists())
+
+    def test_previous_names_preserve_instance_and_disabled_state(self):
+        original = dict(self.original)
+        original["moduleInstances"] = {"CW Notebook": {"module": "cw_notebook", "enabled": False, "receiverGrid": "KM69", "rttyEnabled": False}}
+        original["menuElements"] = [{"name": name, "open": False} for name in ("CW Notebook", "Maverick Decoder", "Maverick CW / RTTY / JS8 / Olivia / PSK31 / PSK63 Decoder", "Maverick Text Modes Decoder", "Radio")]
+        self.config.write_text(json.dumps(original))
+        installer.install(self.binary, self.root)
+        data = json.loads(self.config.read_text())
+        self.assertEqual(data["moduleInstances"], original["moduleInstances"])
+        self.assertEqual([item["name"] for item in data["menuElements"]], ["Maverick Text Modes Decoder", "Radio"])
 
     def test_separate_host_profiles_and_disabled_preference(self):
         self.binary.with_suffix(".host.json").write_text('{"host":"sdrpp","version":"1.0.35"}')

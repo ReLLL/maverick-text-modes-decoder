@@ -1,6 +1,7 @@
 // Copyright (c) 2026 ReLLL and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "engine.h"
+#include "file_platform.h"
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -103,15 +104,15 @@ void Engine::flush(){
 void Engine::persist(){
     if(journal_.path().empty())return;
     auto tmp=folder_/".last-log.tmp";
-    {std::ofstream out(tmp);out.exceptions(std::ios::badbit|std::ios::failbit);out<<journal_.path().filename().string();}
-    std::filesystem::rename(tmp,folder_/".last-log");
+    {std::ofstream out(tmp);out.exceptions(std::ios::badbit|std::ios::failbit);out<<pathText(journal_.path().filename());}
+    replaceFile(tmp,folder_/".last-log");
 }
 void Engine::preferences(){
     std::filesystem::create_directories(folder_);
     auto temp=folder_/".decoder-settings.tmp";
     // Keep the retired vocabulary slot as zero for old preference compatibility.
     {std::ofstream out(temp);out.exceptions(std::ios::badbit|std::ios::failbit);out<<autoSave_<<' '<<manualWpm_<<' '<<manualTone_<<' '<<timingRecovery_<<" 0 "<<autoRetune_<<' '<<extendedSpeed_<<' '<<amAudio_<<'\n';}
-    std::filesystem::rename(temp,folder_/".decoder-settings");
+    replaceFile(temp,folder_/".decoder-settings");
 }
 void Engine::apply(const Command& c){
     if(c.name=="capture"){
@@ -122,7 +123,7 @@ void Engine::apply(const Command& c){
         if(std::filesystem::exists(path))throw std::runtime_error("Diagnostic file already exists");
         diagnostic_.open(path,std::ios::binary);diagnostic_.exceptions(std::ios::badbit|std::ios::failbit);
         diagnosticRemaining_=size_t(rate_>0?rate_:8000)*20;
-        std::lock_guard<std::mutex> lock(viewMutex_);view_.notice="20-second diagnostic capture: "+path.string();
+        std::lock_guard<std::mutex> lock(viewMutex_);view_.notice="20-second diagnostic capture: "+pathText(path);
     }
     else if(c.name=="input_mode"||c.name=="am_audio"){
         reception_={};recoveredReception_={};
@@ -158,7 +159,7 @@ void Engine::apply(const Command& c){
         discardCurrentPacket_=true;
         std::lock_guard<std::mutex> lock(viewMutex_);
         view_.text.clear();view_.recoveredText.clear();++view_.transcriptReset;
-        view_.notice="Log and decoded text cleared. Previous log archived as "+backup.filename().string();
+        view_.notice="Log and decoded text cleared. Previous log archived as "+pathText(backup.filename());
     }
     else if(c.name=="wpm" || c.name=="tone"){
         float v=std::stof(c.value);
@@ -236,7 +237,7 @@ void Engine::work(){
         if(recovered.reception.snrAt>recoveredReception_.snrAt)recoveredReception_.observeSnr(recovered.reception.snr,recovered.reception.snrAt);
         {std::lock_guard<std::mutex> lock(viewMutex_);view_.decoder=original;view_.frequency=frequency_;view_.blocks=blocks_;view_.dropped=dropped_;
             view_.reception=reception_;view_.recoveredReception=recoveredReception_;
-            view_.path=journal_.path().string();view_.saved=saved_;view_.paused=paused_;view_.pauseRevision=pauseRevision_;view_.autosave=autoSave_;
+            view_.path=pathText(journal_.path());view_.saved=saved_;view_.paused=paused_;view_.pauseRevision=pauseRevision_;view_.autosave=autoSave_;
             view_.manualWpm=manualWpm_;view_.manualTone=manualTone_;}
         {std::lock_guard<std::mutex> lock(viewMutex_);view_.recoveredDecoder=recovered;view_.timingRecovery=timingRecovery_;view_.autoRetune=autoRetune_;view_.extendedSpeed=extendedSpeed_;view_.amAudio=amAudio_;}
     }

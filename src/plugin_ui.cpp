@@ -21,7 +21,7 @@ void CWNotebook::setCWMonitoring(bool enabled){
 }
 void CWNotebook::sidebar(){
     auto s=engine_.snapshot();
-    if(ImGui::Button(window_?"Bring CW Notebook to front":"Open CW Notebook",ImVec2(-1,0))){window_=true;presentWindow_=true;}
+    if(ImGui::Button(window_?"Bring Maverick Decoder to front":"Open Maverick Decoder",ImVec2(-1,0))){window_=true;presentWindow_=true;}
     hint("Show and focus the notebook window. Existing decoding and text are kept.");
     if(ImGui::BeginCombo("Receiver",streamName_.c_str())){
         for(const auto& n:sigpath::sinkManager.getStreamNames())if(ImGui::Selectable(n.c_str(),n==streamName_))select(n);
@@ -73,10 +73,10 @@ void CWNotebook::logControls(const cw::Snapshot& s){
     if(ImGui::BeginPopup("notebook_log_actions")){
         if(ImGui::MenuItem("Open Markdown"))openPath(s.path,false);
         hint("Open the current CW log in your default Markdown application.");
-        if(ImGui::MenuItem("Show in Finder"))openPath(s.path,true);
-        hint("Reveal the current CW Markdown log in Finder.");
+        if(ImGui::MenuItem(notebook::revealLabel))openPath(s.path,true);
+        hint(notebook::revealHint);
         if(ImGui::MenuItem("Rename...")){
-            auto name=std::filesystem::path(s.path).filename().string();std::snprintf(filename_,sizeof(filename_),"%s",name.c_str());renaming_=true;
+            auto name=std::filesystem::u8path(s.path).filename().u8string();std::snprintf(filename_,sizeof(filename_),"%s",name.c_str());renaming_=true;
         }
         hint("Change this CW log's filename. An existing file is never overwritten.");
         if(ImGui::MenuItem("New log"))engine_.command("new");
@@ -181,7 +181,7 @@ void CWNotebook::draw(){
     if(s.blocks!=lastBlocks_){lastBlocks_=s.blocks;lastAudioTime_=ImGui::GetTime();}
     notebook::Style visualStyle;
     prepareNotebookWindow(presentWindow_);ImGui::SetNextWindowBgAlpha(1);
-    if(!ImGui::Begin("CW Notebook###cw_notebook_window",&window_,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse)){ImGui::End();return;}
+    if(!ImGui::Begin(notebook::windowName,&window_,ImGuiWindowFlags_NoCollapse|ImGuiWindowFlags_NoScrollbar|ImGuiWindowFlags_NoScrollWithMouse)){ImGui::End();return;}
     windowMin_=ImGui::GetWindowPos();auto size=ImGui::GetWindowSize();windowMax_={windowMin_.x+size.x,windowMin_.y+size.y};
     const int modal=pendingModal_.exchange(0);if(modal)openNotebookModal(modal);
     controlsPopupOpen_=false;transcript_.hidden();

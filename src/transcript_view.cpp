@@ -1,6 +1,7 @@
 // Copyright (c) 2026 ReLLL and contributors
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "transcript_view.h"
+#include "product_identity.h"
 #include "reception.h"
 #include "notebook_style.h"
 #include "rtty_report.h"
@@ -107,7 +108,12 @@ int TranscriptView::selectionCallback(ImGuiInputTextCallbackData* data){
     for(auto it=self.inkRuns_.rbegin();it!=self.inkRuns_.rend();++it)
         if(it->ink==radio::Ink::Flag&&!it->flag.empty()&&it->begin>=size_t(first)&&it->end<=size_t(last))
             self.selection_.replace(it->begin-size_t(first),it->end-it->begin,radio::unicodeFlag(it->flag));
-    if(!self.selection_.empty() && ImGui::GetIO().KeySuper && ImGui::IsKeyPressed(ImGuiKey_C))self.copied(self.selection_,"selection");
+#ifdef _WIN32
+    const bool copyModifier=ImGui::GetIO().KeyCtrl;
+#else
+    const bool copyModifier=ImGui::GetIO().KeySuper;
+#endif
+    if(!self.selection_.empty() && copyModifier && ImGui::IsKeyPressed(ImGuiKey_C))self.copied(self.selection_,"selection");
     return 0;
 }
 void TranscriptView::draw(const std::string& text,float height,float scale,bool& follow,const radio::TextOptions& options,const FlagProvider& flags){
@@ -128,7 +134,11 @@ void TranscriptView::draw(const std::string& text,float height,float scale,bool&
     }
     ImGui::PushStyleColor(ImGuiCol_FrameBg,ImVec4(.045f,.050f,.054f,1));
     const bool macKeys=ImGui::GetIO().ConfigMacOSXBehaviors;
+#ifdef _WIN32
+    ImGui::GetIO().ConfigMacOSXBehaviors=false;
+#else
     ImGui::GetIO().ConfigMacOSXBehaviors=true;
+#endif
     ImGui::InputTextMultiline("##decoded_morse",buffer_.data(),buffer_.size(),ImVec2(-1,height),
         ImGuiInputTextFlags_ReadOnly|ImGuiInputTextFlags_CallbackAlways,selectionCallback,this);
     ImGui::GetIO().ConfigMacOSXBehaviors=macKeys;
@@ -137,7 +147,7 @@ void TranscriptView::draw(const std::string& text,float height,float scale,bool&
     if(hovered && (ImGui::GetIO().MouseWheel!=0 || (ImGui::GetActiveID()==id && !selection_.empty())))follow=false;
     popupOpen_=ImGui::BeginPopupContextItem("copy_morse");
     if(popupOpen_){
-        if(ImGui::MenuItem("Copy selection","Cmd+C",false,!selection_.empty()))copied(selection_,"selection");
+        if(ImGui::MenuItem("Copy selection",notebook::copyShortcut,false,!selection_.empty()))copied(selection_,"selection");
         notebook::hint("Copy only the selected displayed text to the clipboard.");
         if(ImGui::MenuItem("Copy all",nullptr,false,!text.empty()))copyAll(text);
         notebook::hint("Copy the whole displayed version without reception metadata. Use Copy to clipboard for a reception report with metadata.");
@@ -154,7 +164,8 @@ void TranscriptView::draw(const std::string& text,float height,float scale,bool&
     }
     ImGui::PopStyleColor();ImGui::SetWindowFontScale(1);
     if(ImGui::GetTime()-copiedAt_<3)ImGui::TextColored(ImVec4(.36f,.85f,.68f,1),"%s",copyNotice_.c_str());
-    else ImGui::TextDisabled(follow?"Select text and press Cmd+C, or right-click for copy options.":"New text continues below. Enable Follow text to scroll to the latest.");
+    else if(follow)ImGui::TextDisabled("Select text and press %s, or right-click for copy options.",notebook::copyShortcut);
+    else ImGui::TextDisabled("New text continues below. Enable Follow text to scroll to the latest.");
     wasFollowing_=follow;
     ImGui::PopID();
 }

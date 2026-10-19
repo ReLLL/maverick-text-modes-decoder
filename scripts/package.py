@@ -20,19 +20,19 @@ if not args.binary.is_file():
 manifest = args.binary.with_suffix(".host.json")
 if not manifest.is_file() or json.loads(manifest.read_text()).get("host") != args.host:
     parser.error("Matching cw_notebook.host.json required beside the binary.")
-name = f"cw-notebook-{version}-{args.host}-macos-arm64"
+name = f"maverick-text-modes-decoder-{version}-{args.host}-macos-arm64"
 folder = ROOT / "dist"
 folder.mkdir(exist_ok=True)
 archive = folder / f"{name}.zip"
 files = {"cw_notebook.dylib": args.binary, "cw_notebook.host.json": manifest}
-for path in ("scripts/install.py", "README.md", "LICENSE", "CREDITS.md", "THIRD_PARTY_NOTICES.md", "CHANGELOG.md", "docs/rtty.md", "docs/psk.md", "docs/fec-modes.md", "docs/callsigns.md", "resources/cty.dat", "resources/cty-LICENSE.txt", "resources/country-flags.tsv"):
+for path in ("scripts/install.py", "README.md", "LICENSE", "CREDITS.md", "THIRD_PARTY_NOTICES.md", "CHANGELOG.md", "docs/rtty.md", "docs/psk.md", "docs/fec-modes.md", "docs/callsigns.md", "docs/WINDOWS.md", "resources/cty.dat", "resources/cty-LICENSE.txt", "resources/country-flags.tsv"):
     files[path] = ROOT / path
 with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as output:
     for relative, source in files.items():
         output.write(source, f"{name}/{relative}")
 checksums = []
 for host in ("brown", "sdrpp"):
-    path = folder / f"cw-notebook-{version}-{host}-macos-arm64.zip"
+    path = folder / f"maverick-text-modes-decoder-{version}-{host}-macos-arm64.zip"
     if path.is_file():
         checksums.append(f"{hashlib.sha256(path.read_bytes()).hexdigest()}  {path.name}\n")
 (folder / "SHA256SUMS.txt").write_text("".join(checksums))

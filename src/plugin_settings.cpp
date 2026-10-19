@@ -50,11 +50,11 @@ void CWNotebook::settings(const cw::Snapshot& s){
             notebook::hint("Open this host's CW log folder in Finder. Existing logs are kept.");
         }else{
             group("Receiver and decoder");
-            ImGui::Text("CW Notebook %s | %s",CW_VERSION_STRING,cw::host::name);
+            ImGui::Text("%s %s | %s",notebook::shortName,CW_VERSION_STRING,cw::host::name);
             ImGui::Text("Glitches filtered: %llu",static_cast<unsigned long long>(s.recoveredDecoder.filteredGlitches));
             ImGui::Text("Quiet relearns: %llu | Reconnects: %llu",static_cast<unsigned long long>(s.recoveredDecoder.recoveries),static_cast<unsigned long long>(reconnects_));
             if(ImGui::Button("Reconnect CW decoder"))handleDebugCommand("reconnect","");
-            notebook::hint("Reconnect only CW Notebook's private receive channel. Keep the host source and other modules running.");
+            notebook::hint("Reconnect only Maverick Decoder's private receive channel. Keep the host source and other modules running.");
             if(ImGui::Button("Save 20s signal"))engine_.command("capture");
             notebook::hint("Save a private diagnostic recording for offline analysis. Reception continues.");
             group("Reference data");

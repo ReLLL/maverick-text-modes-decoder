@@ -1,5 +1,20 @@
 # Changelog
 
+## 1.0.50 - unreleased
+
+- Rename the project to Maverick Text Modes Decoder: CW / RTTY / JS8 / Olivia /
+  PSK31 / PSK63. Preserve existing module IDs, settings, logs and stable window
+  identity. Migrate previous menu labels without re-enabling disabled decoding.
+- Add a Windows SDR# x64 .NET 9 preview using the official raw-IQ/DSP interfaces
+  and an isolated native worker. Reuse the existing bounded decoders and UI;
+  retain separate SDR++/Brown integrations. See `docs/WINDOWS.md` for tested
+  versions, synthetic reception evidence and performance limitations.
+- Support Unicode Windows paths, recoverable CW logs, Ctrl+C selection, cached
+  flags, capture epoch isolation and parent-exit cleanup. Include an integrity
+  checked installer with backups outside the scanned plugin directory.
+- Add Twitter/X feedback and a companion invitation to Kondor Weak Signal Modes
+  Decoder for weak-signal reception, DX mapping and reception logging.
+
 ## 1.0.49 - 2026-10-19
 
 Public release incorporating the local 1.0.43-1.0.48 builds below.

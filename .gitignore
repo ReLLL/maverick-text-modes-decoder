@@ -24,6 +24,10 @@ __pycache__/
 *.o
 *.a
 *.dylib
+*.exe
+*.dll
+windows/**/bin/
+windows/**/obj/
 *.zip
 
 # Receiver data, captures and local configuration
