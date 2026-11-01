@@ -20,7 +20,7 @@ last reception time. A conservative RTTY ambiguity check withholds misleading
 prefix-extension flags without changing received characters. See
 [callsigns and display settings](docs/callsigns.md).
 
-If the transcript is hidden or outside the visible area, use **Bring Maverick Decoder to front** in the sidebar. The window returns centered and in front without interrupting reception. Disabling and re-enabling also reopens it.
+Maverick starts with its window hidden. Enabled decoding and CW autosave continue in the background. Use **Open Maverick Decoder** in the host sidebar to show it, or **Bring Maverick Decoder to front** to restore an already open window. Explicit opening centers and focuses the window without interrupting reception.
 
 ## Features
 
@@ -49,6 +49,12 @@ If the transcript is hidden or outside the visible area, use **Bring Maverick De
 ### Platform requirements
 
 Separate binaries target **Apple Silicon Macs, macOS 15 or newer**. Brown remains the primary, native host with its full integration. The Brown build targets **SDR++Brown 1.2.1, August 4, 2026 build**; the standard build targets **SDR++ 1.2.0, May 28, 2024 build**. Both are tested on macOS 26. Older macOS versions meeting the build target have not been tested.
+
+Version 1.0.51 additionally builds for **SDR++ 1.3.2, October 23, 2026
+nightly**, with a separate legacy 1.2.0 payload in the standard package.
+The installer chooses the matching verified payload. See
+[validation results and limits](docs/validation.md); build/lifecycle checks are
+separate from reception-quality evidence.
 
 SDR++ forks do not provide a stable plugin ABI. Never interchange the two binaries. A different host build may require rebuilding against its matching headers. Intel macOS, Linux host plugins and other forks are not currently validated. The Windows SDR# preview targets official x64 .NET 9 revision 1.0.0.1921; see [Windows requirements and limits](docs/WINDOWS.md). The standalone decoder tests need neither host.
 
@@ -86,6 +92,13 @@ This is an independent community plugin, not an official host release. The binar
 
 Python 3 is required; no Python packages are needed. The installer refuses to run while Brown is open and checks the binary architecture. It backs up the configuration and previous plugin, then installs outside the signed app bundle.
 
+The installer also requires Apple's Command Line Tools (`otool`,
+`lipo` and `install_name_tool`) and macOS `codesign`. It checks exact host and
+dependency fingerprints, CPU architecture, minimum macOS version and actual
+symbol binding before changing the profile. It repairs dependency paths only
+in a temporary plugin copy and applies an ad hoc signature to that copy.
+The host bundle and its signature are never changed.
+
 ### Standard SDR++ installation
 
 Use the **sdrpp** package and its included `cw_notebook.host.json`; the **brown** package is incompatible. Launch the matching SDR++ once, then quit it. From the extracted standard package run:
@@ -105,6 +118,28 @@ The installer checks the package's host manifest before changing files, refuses 
 For standard SDR++, the profile is `~/Library/Application Support/sdrpp/`, the plugin is in that profile's `plugins/` folder, and logs/preferences are `~/Documents/SDR++/CW Logs/`.
 
 For a custom Brown profile, add `--config-dir "/path/to/profile"`.
+
+For an application outside `/Applications`, add `--app "/path/to/SDR++.app"`
+(or your Brown application). To diagnose without installing, add `--check`:
+
+```sh
+python3 scripts/install.py --host sdrpp --binary cw_notebook.dylib --app "/path/to/SDR++.app" --check
+```
+
+Packages may contain multiple verified revisions of the same host under
+`variants/`. The installer automatically selects a matching local payload.
+It never assumes that a newer VOLK filename, matching version number or matching
+exported symbols establish C++/ImGui compatibility. If no verified payload
+matches, it explains the mismatch before changing the profile. Use a matching
+package or rebuild with the installed host's matching headers and libraries.
+There are no automatic downloads, library aliases or host-bundle repairs.
+
+New builds also check loaded host images before starting decoder workers.
+After an incompatible host update, decoding stays inactive and reports the
+reason to the host console. The module checkbox retains your requested state.
+Quit the host and rerun a matching installer.
+This guard cannot make an unknown host ABI compatible or recover a library the
+host's loader cannot load. Re-run the installer after relocating the host app.
 
 ### Update or roll back
 
@@ -214,11 +249,11 @@ ctest --test-dir build --output-on-failure
 python3 scripts/install.py
 ```
 
-The pinned headers match the supported August 4 Brown host. Brown is the default `CW_HOST=brown`; its native event and commands remain intact. Standard SDR++ uses a separate build directory:
+The pinned headers match the supported August 4 Brown host. Brown is the default `CW_HOST=brown`; its native event and commands remain intact. For SDR++ 1.3.2's October 23 nightly, use its matching headers and a separate build directory:
 
 ```sh
 git clone https://github.com/AlexandreRouma/SDRPlusPlus.git ../SDRPlusPlus
-git -C ../SDRPlusPlus checkout 762444d3406d68fbc9d4dff8cc237d382793a6e3
+git -C ../SDRPlusPlus checkout f10fb98af8b80de01de94e60c17608e4281e2515
 cmake -S . -B build-sdrpp -DCW_HOST=sdrpp \
   -DSDRPP_SOURCE="../SDRPlusPlus" -DSDRPP_APP="/Applications/SDR++.app" \
   -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=15.0
@@ -226,7 +261,14 @@ cmake --build build-sdrpp --parallel 4
 python3 scripts/install.py --host sdrpp --binary build-sdrpp/cw_notebook.dylib
 ```
 
-For a different host revision, use its matching source and verify the ImGui ABI. Do not replace the host's bundled ImGui. Each build emits `cw_notebook.host.json` beside the binary.
+For the legacy SDR++ 1.2.0 host, use source revision
+`762444d3406d68fbc9d4dff8cc237d382793a6e3` and a separate build directory.
+Configuration verifies the reviewed header/image pairs in
+`resources/host-sdks.json`. A different host revision requires matching source,
+ABI validation and an explicit reviewed SDK contract; see
+[the release process](docs/RELEASING.md). Private local catalogs use
+`CW_HOST_SDK_FILE` and cannot enter public packages. Do not replace the host's
+bundled ImGui. Each build emits `cw_notebook.host.json` beside the binary.
 
 For core and installer tests without Brown:
 

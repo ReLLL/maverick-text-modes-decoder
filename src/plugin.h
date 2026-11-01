@@ -131,8 +131,8 @@ private:
     std::string mode_;
     double bandwidth_=500;
     bool followsBandwidth_=false;
-    bool enabled_=true,window_=true,follow_=true,manualSpeed_=false,manualPitch_=false;
-    bool presentWindow_=true;
+    bool enabled_=true,window_=false,follow_=true,manualSpeed_=false,manualPitch_=false;
+    bool presentWindow_=false;
     bool supportedMode_=false,playing_=false;
     bool renaming_=false;
     bool ownsMouseGesture_=false;

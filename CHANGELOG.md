@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.0.51 - 2026-11-01
+
+- Verify exact macOS host/dependency images before installing. Select matching
+  local host variants, repair plugin dependency paths in staging, ad hoc sign
+  and bind symbols before replacement. Add relocated-app and read-only checks.
+- Keep the module inert after an unverified host change, before touching host
+  UI/DSP state. Preserve separate Brown/standard payloads and profile backups.
+- Start with the decoder window hidden in SDR++, SDR++Brown and the SDR# preview.
+  Continue enabled decoding and CW autosave in the background. Open the window
+  explicitly from the host sidebar; enabling the module does not force it open.
+- Create the Windows native window hidden to avoid a startup flash, and retain
+  explicit Open behavior after a worker crash/retry.
+
 ## 1.0.50 - 2026-10-19
 
 - Rename the project to Maverick Text Modes Decoder: CW / RTTY / JS8 / Olivia /

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(cw_notebook VERSION 1.0.50 LANGUAGES C CXX)
+project(cw_notebook VERSION 1.0.51 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 option(BUILD_PLUGIN "Build the host plugin" ON)
@@ -141,16 +141,36 @@ if(BUILD_PLUGIN)
   if(NOT EXISTS "${HOST_SOURCE}/core/src/module.h" OR NOT EXISTS "${HOST_APP}/Contents/Frameworks/libsdrpp_core.dylib")
     message(FATAL_ERROR "Set matching source headers and installed app for the selected CW_HOST.")
   endif()
-  add_library(cw_notebook MODULE src/plugin.cpp src/plugin_ui.cpp src/plugin_rtty.cpp src/plugin_signals.cpp src/plugin_help.cpp src/plugin_status.cpp src/notebook_popups.cpp src/rtty_receiver.cpp src/plugin_handoff.cpp src/host_adapter.cpp src/transcript_view.cpp src/transcript_ink.cpp src/flag_textures.mm src/plugin_settings.cpp src/plugin_callsigns.cpp)
+  add_library(cw_notebook MODULE src/plugin.cpp src/plugin_ui.cpp src/plugin_rtty.cpp src/plugin_signals.cpp src/plugin_help.cpp src/plugin_status.cpp src/notebook_popups.cpp src/rtty_receiver.cpp src/plugin_handoff.cpp src/host_adapter.cpp src/host_compatibility.cpp src/transcript_view.cpp src/transcript_ink.cpp src/flag_textures.mm src/plugin_settings.cpp src/plugin_callsigns.cpp)
   target_link_libraries(cw_notebook PRIVATE "-framework AppKit" "-framework OpenGL")
-  file(GLOB HOST_VOLK "${HOST_APP}/Contents/Frameworks/libvolk.*.dylib")
-  list(LENGTH HOST_VOLK VOLK_COUNT)
-  if(NOT VOLK_COUNT EQUAL 1)
-    message(FATAL_ERROR "Expected exactly one bundled VOLK library in the selected app")
+  find_package(Python3 COMPONENTS Interpreter REQUIRED)
+  execute_process(COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/scripts/host_compat.py"
+    --app "${HOST_APP}" --print-volk OUTPUT_VARIABLE HOST_VOLK
+    OUTPUT_STRIP_TRAILING_WHITESPACE RESULT_VARIABLE HOST_VOLK_RESULT)
+  if(NOT HOST_VOLK_RESULT EQUAL 0)
+    message(FATAL_ERROR "Could not resolve the selected core's bundled VOLK dependency")
   endif()
   target_include_directories(cw_notebook SYSTEM PRIVATE "${HOST_SOURCE}/core/src" "${HOST_SOURCE}/core/src/imgui" "${HOST_SOURCE}/decoder_modules/radio/src" /opt/homebrew/include)
   target_compile_definitions(cw_notebook PRIVATE CW_HOST_BROWN=${HOST_BROWN} CW_VERSION_STRING="${PROJECT_VERSION}" CW_VERSION_MAJOR=${PROJECT_VERSION_MAJOR} CW_VERSION_MINOR=${PROJECT_VERSION_MINOR} CW_VERSION_PATCH=${PROJECT_VERSION_PATCH})
   target_link_libraries(cw_notebook PRIVATE cw_core rtty_core "${HOST_APP}/Contents/Frameworks/libsdrpp_core.dylib" "${HOST_VOLK}")
-  set_target_properties(cw_notebook PROPERTIES PREFIX "" SUFFIX ".dylib" BUILD_RPATH "${HOST_APP}/Contents/Frameworks")
-  file(GENERATE OUTPUT "${CMAKE_BINARY_DIR}/cw_notebook.host.json" CONTENT "{\"host\":\"${CW_HOST}\",\"version\":\"${PROJECT_VERSION}\"}\n")
+  target_link_options(cw_notebook PRIVATE -Wl,-headerpad_max_install_names)
+  set_target_properties(cw_notebook PROPERTIES PREFIX "" SUFFIX ".dylib" BUILD_RPATH "@executable_path/../Frameworks")
+  file(GLOB HOST_IMAGES CONFIGURE_DEPENDS "${HOST_APP}/Contents/Frameworks/*.dylib")
+  set(CW_HOST_SDK_FILE "${CMAKE_SOURCE_DIR}/resources/host-sdks.json" CACHE FILEPATH "Reviewed host/header SDK contracts; private forks use an unshipped local catalog")
+  set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${HOST_IMAGES}
+    "${HOST_APP}/Contents/MacOS/sdrpp" "${CMAKE_SOURCE_DIR}/scripts/host_compat.py" "${CW_HOST_SDK_FILE}")
+  execute_process(COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/scripts/host_compat.py"
+    --app "${HOST_APP}" --host "${CW_HOST}" --source "${HOST_SOURCE}" --sdk-file "${CW_HOST_SDK_FILE}"
+    --guard-header "${CMAKE_BINARY_DIR}/generated/host_images.h"
+    RESULT_VARIABLE HOST_GUARD_RESULT)
+  if(NOT HOST_GUARD_RESULT EQUAL 0)
+    message(FATAL_ERROR "Could not fingerprint the matching host images")
+  endif()
+  target_include_directories(cw_notebook PRIVATE "${CMAKE_BINARY_DIR}/generated")
+  set_property(TARGET cw_notebook APPEND PROPERTY LINK_DEPENDS "${CMAKE_SOURCE_DIR}/scripts/host_compat.py" "${CW_HOST_SDK_FILE}")
+  add_custom_command(TARGET cw_notebook POST_BUILD
+    COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/scripts/host_compat.py"
+      --binary "$<TARGET_FILE:cw_notebook>" --host "${CW_HOST}"
+      --app "${HOST_APP}" --version "${PROJECT_VERSION}" --source "${HOST_SOURCE}" --sdk-file "${CW_HOST_SDK_FILE}"
+    VERBATIM)
 endif()

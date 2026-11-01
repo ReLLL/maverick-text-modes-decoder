@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "plugin.h"
 #include "notebook_style.h"
+#include "host_compatibility.h"
 #include <core.h>
 #include <cstdlib>
 #include <cstdio>
@@ -72,7 +73,7 @@ void CWNotebook::postInit(){
     rttyEnabled_=cw::host::rttyEnabled(name_);pskEnabled_=cw::host::pskEnabled(name_);
     js8Enabled_=cw::host::fecEnabled(name_,true);oliviaEnabled_=cw::host::fecEnabled(name_,false);syncDigitalMonitoring();
 }
-void CWNotebook::enable(){enabled_=true;window_=true;presentWindow_=true;select(streamName_);if(rtty_&&digitalEnabled())rtty_->enabled(true);metadata();}
+void CWNotebook::enable(){enabled_=true;select(streamName_);if(rtty_&&digitalEnabled())rtty_->enabled(true);metadata();}
 void CWNotebook::disable(){enabled_=false;accept_=false;pendingModal_=4;if(rtty_)rtty_->enabled(false);detach();engine_.command("save");}
 void CWNotebook::detach(){
     if(!audioStream_)return;
@@ -204,6 +205,38 @@ std::string CWNotebook::handleDebugCommand(const std::string& cmd,const std::str
     return "{\"error\":\"Unknown command\"}";
 }
 MOD_EXPORT void _INIT_(){}
-MOD_EXPORT ModuleManager::Instance* _CREATE_INSTANCE_(std::string name){return new CWNotebook(std::move(name));}
+namespace {
+// A non-null inert instance is required by both hosts' module managers. It
+// touches no host globals, ImGui context, logs, streams or decoder workers.
+class IncompatibleHost final:public ModuleManager::Instance {
+public:
+    void postInit() override{}
+    void enable() override{enabled_=true;}
+    void disable() override{enabled_=false;}
+    // Hosts save this preference on exit. Keep the user's requested state so
+    // installing the matching payload can recover without silently disabling it.
+    bool isEnabled() override{return enabled_;}
+private:
+    bool enabled_=true;
+};
+}
+MOD_EXPORT bool maverick_host_compatible(){
+    const auto error=cw::host::compatibilityError();
+    if(!error.empty())std::fprintf(stderr,"Maverick compatibility check: %s\n",error.c_str());
+    return error.empty();
+}
+MOD_EXPORT bool maverick_probe_host_libraries(){
+    const auto error=cw::host::compatibilityError(true);
+    if(!error.empty())std::fprintf(stderr,"Maverick library compatibility check: %s\n",error.c_str());
+    return error.empty();
+}
+MOD_EXPORT ModuleManager::Instance* _CREATE_INSTANCE_(std::string name){
+    const auto error=cw::host::compatibilityError();
+    if(!error.empty()){
+        std::fprintf(stderr,"Maverick Text Modes Decoder inactive: %s\n",error.c_str());
+        return new IncompatibleHost();
+    }
+    return new CWNotebook(std::move(name));
+}
 MOD_EXPORT void _DELETE_INSTANCE_(ModuleManager::Instance* instance){delete instance;}
 MOD_EXPORT void _END_(){}

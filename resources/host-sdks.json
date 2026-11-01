@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "sdks": [
+    {
+      "id": "brown-1.2.1-679f48de",
+      "host": "brown",
+      "source_revision": "679f48deee5299a199d15d30e6e785fac6054896",
+      "host_core_sha256": "1b06ff623ff3908379b55e56da66620e0d7367d1cb7fb90f33fb598b99a138c9",
+      "host_executable_sha256": "60358c4b8b148d927942a6c7532937297710f0c64b6d55ff3ef8cc80210deef4",
+      "host_headers_sha256": "233563be781468ee564661855fd32d2e0e877426b51b5cd84675b9a0c975e96b",
+      "libraries": {
+        "libfftw3.3.dylib": "78f37109056b477532576ff1435566cd582a836d12072534a62121d939361c8e",
+        "libfftw3f.3.dylib": "54fa56d05503d5acd69ffa9ba9c43b86959eef0ebc4280e4debb711f15237db9",
+        "libglfw.3.dylib": "1d99963d0f5fecbed52e1dccb09b6234a6d6ee89cb575cb042dae77a4548b8c9",
+        "libsdrpp_core.dylib": "1b06ff623ff3908379b55e56da66620e0d7367d1cb7fb90f33fb598b99a138c9",
+        "libvolk.3.3.dylib": "dfccc205a2256b5adbf3f84979fcd318c3da9be352d9f242eff9a603b4387f6b",
+        "libzstd.1.dylib": "5776b329354db75a7997fe6d6e3652993cc9465e1e0ce9b2604989fd498b64a1"
+      }
+    },
+    {
+      "id": "sdrpp-1.2.0-762444d",
+      "host": "sdrpp",
+      "source_revision": "762444d3406d68fbc9d4dff8cc237d382793a6e3",
+      "host_core_sha256": "ca65955dac1676bb53fb1a9dfbb5354c618670b235fb50cc774e640b60065a55",
+      "host_executable_sha256": "94c3a2c1e423f2f0cddcdbed2a35e2807fd51b77ada229dced4fd340e2b4261b",
+      "host_headers_sha256": "f07b6c66b71989cae9c4c46d42ddacce7edcd2f3ea6070ebb6012addb5664572",
+      "libraries": {
+        "libfftw3f.3.dylib": "6a383503240a36274742e129dcc4c8f42a467ffd63a95c2c8e2ed3c8961e6bc8",
+        "libglfw.3.dylib": "785c71c21332b4f62b61acc1ce3aba025147266a4ddd736856804125f23e9167",
+        "libsdrpp_core.dylib": "ca65955dac1676bb53fb1a9dfbb5354c618670b235fb50cc774e640b60065a55",
+        "libvolk.3.1.dylib": "14a17b1f840fc19c83130c5f2596a4d4c54c7353592c478cec8ceb5e2d5f6423",
+        "libzstd.1.dylib": "e568b0c155492f29ca7836a3f91bb3c07fce26855e7f914333fdcb0fc454202b"
+      }
+    },
+    {
+      "id": "sdrpp-1.3.2-f10fb98",
+      "host": "sdrpp",
+      "source_revision": "f10fb98af8b80de01de94e60c17608e4281e2515",
+      "host_core_sha256": "b0ac51b8c1c1969096ad97b81d748e0b71f0d14a91d751e6d2ce4988124ae2ae",
+      "host_executable_sha256": "5664a68bf88c30dc8ed80e5459e743ad6d01323684135516e3e9b59756861977",
+      "host_headers_sha256": "86d59e2276322e9488bdb6730189e6ac4b67abcce61428db3e015a74d9c99d52",
+      "libraries": {
+        "libfftw3f.3.dylib": "54fa56d05503d5acd69ffa9ba9c43b86959eef0ebc4280e4debb711f15237db9",
+        "libglfw.3.dylib": "81ec3d327c968a9fb810e7f9b6d52b467b3ce80c13a4c8694c124716b9b78c92",
+        "libsdrpp_core.dylib": "b0ac51b8c1c1969096ad97b81d748e0b71f0d14a91d751e6d2ce4988124ae2ae",
+        "libvolk.3.3.dylib": "b026a9fede52170c0ce95e4c21975c41b493b965c694f2cad4ff90037357478e",
+        "libzstd.1.dylib": "5776b329354db75a7997fe6d6e3652993cc9465e1e0ce9b2604989fd498b64a1"
+      }
+    }
+  ]
+}

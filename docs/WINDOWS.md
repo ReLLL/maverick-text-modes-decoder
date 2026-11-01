@@ -7,7 +7,7 @@ test capture. See [validation evidence and limits](#validation-and-limits).
 
 ## Download and install
 
-[Download the Windows preview](https://github.com/ReLLL/maverick-text-modes-decoder/releases/download/v1.0.50/maverick-text-modes-decoder-1.0.50-sdrsharp-windows-x64-preview.zip), or choose a macOS package from [Releases](https://github.com/ReLLL/maverick-text-modes-decoder/releases/latest).
+[Download the Windows preview](https://github.com/ReLLL/maverick-text-modes-decoder/releases/download/v1.0.51/maverick-text-modes-decoder-1.0.51-sdrsharp-windows-x64-preview.zip), or choose a macOS package from [Releases](https://github.com/ReLLL/maverick-text-modes-decoder/releases/latest).
 
 Target: Windows x64, SDR# .NET 9, official revision 1.0.0.1921. Validation uses
 Windows 11 ARM64 under Parallels x64 emulation. Other SDR# versions, x86 builds
@@ -32,8 +32,9 @@ Respect `core.pluginsDirectory` if SDR# configures a different directory.
 Move an old plugin folder to a backup outside that directory before replacing
 it. No Plugins.xml entry is required.
 
-Enable Maverick Decoder in SDR#'s plugins panel. Open restores the current
-notebook. Closing the window hides it while enabled reception continues.
+Maverick starts with its window hidden. Enable Maverick Decoder in SDR#'s
+plugins panel for background reception; Open shows the current notebook.
+Closing the window hides it while enabled reception continues.
 Disabling the plugin stops private capture and retains current text. Digital
 tabs are memory-only; copy wanted reports before quitting. CW logs are saved
 under `%LOCALAPPDATA%/Maverick Decoder/SDRSharp/CW Logs`; other preferences stay

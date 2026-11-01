@@ -6,6 +6,9 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest import mock
+import sys
+
+sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 spec = importlib.util.spec_from_file_location("installer", Path(__file__).parents[1] / "scripts/install.py")
 installer = importlib.util.module_from_spec(spec)
@@ -14,11 +17,17 @@ spec.loader.exec_module(installer)
 
 class InstallerTests(unittest.TestCase):
     def setUp(self):
+        # These tests cover transactional profile changes. Real Mach-O preflight
+        # and ABI policy are covered independently by the compatibility suites.
+        prepare = mock.patch.object(installer.host_compat, "prepare", side_effect=lambda source, staged, app, host: installer.shutil.copy2(source, staged))
+        prepare.start()
+        self.addCleanup(prepare.stop)
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.binary = self.root / "new.dylib"
         self.binary.write_bytes(b"new plugin")
+        self.binary.with_suffix(".host.json").write_text('{"host":"brown"}')
         self.config = self.root / "config.json"
         self.original = {"modules": ["other"], "moduleInstances": {}, "menuElements": [{"name": "Radio", "open": True}], "frequency": 7000000}
         self.config.write_text(json.dumps(self.original))
@@ -94,6 +103,36 @@ class InstallerTests(unittest.TestCase):
                 installer.install(self.binary, self.root)
         self.assertEqual(self.config.read_bytes(), previous)
         self.assertEqual((self.root / "plugins/cw_notebook.dylib").read_bytes(), b"new plugin")
+
+    def test_preflight_failure_leaves_profile_and_backup_untouched(self):
+        with mock.patch.object(installer.host_compat, "prepare", side_effect=ValueError("unverified ABI")):
+            with self.assertRaisesRegex(ValueError, "unverified ABI"):
+                installer.install(self.binary, self.root)
+        self.assertEqual(json.loads(self.config.read_text()), self.original)
+        self.assertFalse((self.root / "plugins").exists())
+        self.assertFalse((self.root / "cw-notebook-backups").exists())
+
+    def test_cli_uses_exact_process_query_and_installs(self):
+        with mock.patch.object(sys, "argv", ["install.py", "--binary", str(self.binary)]), mock.patch.object(installer.platform, "system", return_value="Darwin"), mock.patch.object(installer.subprocess, "run", return_value=mock.Mock(returncode=1)) as processes, mock.patch.object(installer.host_compat, "select_payload", return_value=self.binary), mock.patch.object(installer, "install", return_value=self.root) as install:
+            self.assertEqual(installer.main(), 0)
+        self.assertEqual(processes.call_args.args[0], ["pgrep", "-x", "sdrpp"])
+        install.assert_called_once()
+
+    def test_cli_refuses_running_or_uninspectable_host(self):
+        for result in (0, 3):
+            with self.subTest(result=result), mock.patch.object(sys, "argv", ["install.py", "--binary", str(self.binary)]), mock.patch.object(installer.platform, "system", return_value="Darwin"), mock.patch.object(installer.subprocess, "run", return_value=mock.Mock(returncode=result, stdout="123\n")), mock.patch.object(installer, "pid_executable", return_value=Path("/Applications/SDR++Brown.app/Contents/MacOS/sdrpp")), mock.patch.object(installer, "install") as install:
+                with self.assertRaises(SystemExit):
+                    installer.main()
+                install.assert_not_called()
+
+    def test_running_host_uses_resolved_kernel_path_and_fails_closed(self):
+        executable = (self.root / "App.app/Contents/MacOS/sdrpp").resolve()
+        with mock.patch.object(installer.subprocess, "run", return_value=mock.Mock(returncode=0, stdout="123\n")), mock.patch.object(installer, "pid_executable", return_value=executable):
+            self.assertTrue(installer.running_host(self.root / "App.app"))
+            self.assertFalse(installer.running_host(self.root / "Other.app"))
+        with mock.patch.object(installer.subprocess, "run", return_value=mock.Mock(returncode=0, stdout="123\n")), mock.patch.object(installer, "pid_executable", side_effect=ValueError("inspection denied")):
+            with self.assertRaisesRegex(ValueError, "inspection denied"):
+                installer.running_host(self.root / "App.app")
 
 
 if __name__ == "__main__":

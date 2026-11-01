@@ -27,6 +27,38 @@ Brown is the primary compile-time target (`CW_HOST=brown`). Its existing onWater
 
 Both targets share the decoder, IQ capture, UI, recovery, file worker, watchdog and browser handoff. Their log/preference folders are separate. Standard SDR++ lacks Brown's HTTP server and native location field; an optional grid is saved within the notebook's module instance. Upstream removes unknown top-level configuration keys, so plugin settings never add them. Package manifests and installer checks reject the other host's binary/profile before mutations; updates preserve instance settings and intentional disablement.
 
+`scripts/host_compat.py` seals each macOS build with a schema-2 manifest containing
+plugin, executable, core and transitive non-system-library fingerprints. Build
+load commands use host-relative framework paths without developer-machine
+paths. The installer selects an exact matching local payload, stages absolute
+paths to the selected bundle's libraries, ad hoc signs the plugin copy and binds
+all symbols in a disposable subprocess before backup/replacement. It neither
+changes the host nor substitutes an unverified library version. The subprocess
+exits after binding without running core-global destructors, because it has not
+initialized the host application. Profile replacement retains rollback on config
+failure. Package checksums authenticate downloads; manifest hashes detect
+accidental corruption and identity drift, not malicious package replacement.
+`resources/host-sdks.json` pins reviewed source-header/image pairs. Configuration
+and post-link sealing reject a changed host with stale headers instead of
+automatically trusting new fingerprints. The build resolves VOLK from the core's
+actual dependency closure, not from the highest or only filename in a folder.
+Private forks can use an explicit unshipped SDK catalog; public packaging accepts
+only the reviewed public catalog.
+
+`host_compatibility.cpp` checks live Mach-O UUIDs and on-disk SHA-256 fingerprints
+against a generated build header before constructing the notebook. A changed
+image yields an inert module instance and a console error, without
+touching host data layouts, ImGui, logs, subscriptions or workers. This uses only
+macOS image enumeration and hashing; no monitoring thread, network request or
+runtime installer is added. The loader preflight requires both guard exports
+and uses the explicit library-probe entry point; the selected executable is
+checked against the manifest separately. The factory always checks the real
+`MH_EXECUTE` image, including when an inserted dylib occupies image index zero.
+The guard supplements exact-host builds; it cannot prove arbitrary ABI compatibility
+or prevent a host loader failure before module creation.
+The inert instance retains the user's requested enablement so host config saves
+do not turn an automatic safety stop into a permanent disabled preference.
+
 The plugin creates a private IQFrontEnd channel following Radio's full passband. CW retains its 8 kHz input, centered filter and 800 Hz mono representation. Other supported modes use 16 kHz input for widths up to 6 kHz, 32 kHz up to 12 kHz and 64 kHz for wider AM filters, covering the tested Brown build's full 12 kHz sideband and 15 kHz AM ranges. USB selects above the dial, LSB below it and DSB/AM around it. LSB conjugates the complex signal; keyed-carrier paths shift the complete passband above 200 Hz before converting to real samples, preventing opposite frequencies from folding onto each other. AM audio-tone input instead extracts the magnitude envelope and removes carrier DC with a 50 Hz high-pass. Its audio pitch does not identify an RF carrier offset. This uses the host's bundled VOLK library; no extra waterfall cursor is created. One worker performs decoding, logging and file commands. The GUI takes a snapshot; disk operations never run in the GUI or stream callback.
 
 An initial audio-stream implementation failed installed-host testing because Brown's CW AGC raised gaps and distorted the amplitude keying. The direct IQ path avoids that dependency and keeps speaker settings untouched.
@@ -101,7 +133,7 @@ The transcript uses a read-only ImGui multiline text control with cached word wr
 
 The plugin claims waterfall input over its visible window, throughout gestures that start there, while its copy menu is open, and while a focused text control handles keys. A drag can leave the window without reaching the waterfall. The guard releases for a fresh outside click, preserving normal tuning.
 
-Enabling the plugin or reopening its transcript requests one centered, focused presentation within the host viewport. The sidebar also offers Bring transcript to front without restarting the stream. Size constraints shrink with the viewport; ordinary frames do not steal focus or recenter the window.
+The plugin starts with its transcript hidden, independently of decoding enablement. Enabling the module does not request a window presentation. Opening it from the sidebar requests one centered, focused presentation within the host viewport. The sidebar also offers Bring transcript to front without restarting the stream. Size constraints shrink with the viewport; ordinary frames do not steal focus or recenter the window. SDR# creates its native window hidden as well, avoiding a startup flash; only an explicit Open request shows it, including after worker recovery.
 
 Clear view and successful Clear log operations increment a transcript reset counter in the worker snapshot. The GUI uses that counter to discard held text and selection and resume following live text, even if its window was hidden during the command. Failed archival leaves both the transcript and reset counter unchanged. Clear log is a single-click operation with automatic archival. After archival succeeds it resets Morse timing, discards the worker's current audio packet and clears the queued audio so old characters cannot refill the cleared box.
 

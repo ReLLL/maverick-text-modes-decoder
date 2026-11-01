@@ -4,7 +4,8 @@
 """Install outside the selected host's signed bundle; preserve configuration backups."""
 import argparse
 import datetime
-import hashlib
+import ctypes
+import errno
 import json
 import os
 from pathlib import Path
@@ -15,8 +16,37 @@ import sys
 import platform
 import tempfile
 
+import host_compat
+
 
 HOSTS = {"brown": ("SDR++Brown", "sdrpp-brown"), "sdrpp": ("SDR++", "sdrpp")}
+
+
+def pid_executable(pid: int):
+    """macOS kernel executable path, independent of argv or launch directory."""
+    proc = ctypes.CDLL("/usr/lib/libproc.dylib", use_errno=True)
+    proc.proc_pidpath.argtypes = [ctypes.c_int, ctypes.c_void_p, ctypes.c_uint32]
+    proc.proc_pidpath.restype = ctypes.c_int
+    path = ctypes.create_string_buffer(4096)  # PROC_PIDPATHINFO_MAXSIZE
+    if proc.proc_pidpath(pid, path, len(path)) <= 0:
+        code = ctypes.get_errno()
+        if code == errno.ESRCH:
+            return None  # Process exited between enumeration and inspection.
+        raise ValueError(f"Could not inspect host process {pid}; no files changed (errno {code}).")
+    return Path(os.fsdecode(path.value)).resolve()
+
+
+def running_host(app: Path) -> bool:
+    try:
+        result = subprocess.run(["pgrep", "-x", "sdrpp"], capture_output=True, text=True, timeout=10)
+    except subprocess.TimeoutExpired as error:
+        raise ValueError("Host process check timed out; no files changed.") from error
+    if result.returncode == 1:
+        return False
+    if result.returncode != 0 or not result.stdout.strip():
+        raise ValueError("Could not check whether the host is running; no files changed.")
+    executable = (app / "Contents/MacOS/sdrpp").resolve()
+    return any(pid_executable(int(pid)) == executable for pid in result.stdout.splitlines())
 
 
 def validate_host(binary: Path, host: str, root: Path) -> None:
@@ -27,15 +57,13 @@ def validate_host(binary: Path, host: str, root: Path) -> None:
             raise ValueError("Profile belongs to the other host; choose its matching binary and --host.")
     manifest = binary.with_suffix(".host.json")
     if not manifest.is_file():
-        if host == "brown":
-            return  # Earlier Brown releases have no manifest.
-        raise ValueError("SDR++ requires its matching cw_notebook.host.json beside the binary.")
+        raise ValueError("A matching cw_notebook.host.json is required beside the binary; download a current package or rebuild.")
     data = json.loads(manifest.read_text())
     if not isinstance(data, dict) or data.get("host") != host:
         raise ValueError("Binary targets a different host; select the matching package and --host.")
 
 
-def install(binary: Path, root: Path, host: str = "brown") -> Path:
+def install(binary: Path, root: Path, host: str = "brown", app: Path = None) -> Path:
     validate_host(binary, host, root)
     config = root / "config.json"
     if not binary.is_file() or not config.is_file():
@@ -65,20 +93,19 @@ def install(binary: Path, root: Path, host: str = "brown") -> Path:
     encoded = (json.dumps(data, indent=4) + "\n").encode()
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%d-%H%M%S-%fZ")
     backup = root / "cw-notebook-backups" / stamp
-    backup.mkdir(parents=True, exist_ok=False)
-    shutil.copy2(config, backup / "config.json")
     had_binary = target.exists()
-    if had_binary:
-        shutil.copy2(target, backup / target.name)
-    target.parent.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".cw-install-", dir=root) as stage:
         staged_binary = Path(stage) / target.name
         staged_config = Path(stage) / "config.json"
-        shutil.copy2(binary, staged_binary)
+        app = app or Path("/Applications") / (HOSTS[host][0] + ".app")
+        host_compat.prepare(binary, staged_binary, app, host)
         staged_config.write_bytes(encoded)
         staged_config.chmod(config.stat().st_mode & 0o777)
-        if hashlib.sha256(staged_binary.read_bytes()).digest() != hashlib.sha256(binary.read_bytes()).digest():
-            raise OSError("Plugin copy checksum mismatch; installed files unchanged.")
+        backup.mkdir(parents=True, exist_ok=False)
+        shutil.copy2(config, backup / "config.json")
+        if had_binary:
+            shutil.copy2(target, backup / target.name)
+        target.parent.mkdir(exist_ok=True)
         os.replace(staged_binary, target)
         try:
             os.replace(staged_config, config)
@@ -98,25 +125,33 @@ def main() -> int:
     parser.add_argument("--binary", type=Path, default=project / "build/cw_notebook.dylib")
     parser.add_argument("--host", choices=HOSTS, default="brown", help="brown (primary/default) or sdrpp; requires matching binary")
     parser.add_argument("--config-dir", type=Path, help="Custom profile; defaults to the selected host's macOS profile")
+    parser.add_argument("--app", type=Path, help="Selected host .app, including relocated applications")
+    parser.add_argument("--check", action="store_true", help="Check and bind a temporary plugin copy without installing or modifying the profile")
     args = parser.parse_args()
     if platform.system() != "Darwin":
         parser.error("The plugin installer currently supports macOS only.")
     name, folder = HOSTS[args.host]
-    process_pattern = r"SDR\+\+Brown.app/Contents/MacOS/sdrpp|^./sdrpp" if args.host == "brown" else r"SDR\+\+.app/Contents/MacOS/sdrpp|^./sdrpp"
-    processes = subprocess.run(["pgrep", "-f", process_pattern], capture_output=True)
-    if processes.returncode == 0:
-        parser.error(f"Quit {name} before installing; it writes its config on exit.")
-    if processes.returncode != 1:
-        parser.error("Could not check whether the host is running; no files changed.")
+    app = (args.app or Path("/Applications") / (name + ".app")).expanduser().resolve()
+    if not args.check:
+        try:
+            if running_host(app):
+                parser.error(f"Quit {name} before installing; it writes its config on exit.")
+        except (OSError, ValueError) as error:
+            parser.error(str(error))
     binary = args.binary.expanduser().resolve()
     if not binary.is_file():
         parser.error("Plugin binary missing. Build it first or pass --binary from an extracted release.")
-    probe = subprocess.run(["lipo", str(binary), "-verify_arch", platform.machine()], capture_output=True)
-    if probe.returncode:
-        parser.error("Plugin architecture does not match this Mac.")
     try:
+        selected = host_compat.select_payload(binary, app, args.host, sorted((binary.parent / "variants").glob("*/cw_notebook.dylib")))
+        if selected != binary:
+            print(f"Selected compatible local variant: {selected.parent.name}")
+        if args.check:
+            with tempfile.TemporaryDirectory(prefix="cw-preflight-") as stage:
+                host_compat.prepare(selected, Path(stage) / "cw_notebook.dylib", app, args.host)
+            print(f"Compatibility and loader check passed for {name}; no profile files changed.")
+            return 0
         profile = args.config_dir or Path.home() / "Library/Application Support" / folder
-        backup = install(binary, profile.expanduser().resolve(), args.host)
+        backup = install(selected, profile.expanduser().resolve(), args.host, app)
     except (OSError, ValueError) as error:
         print(f"Install failed: {error}", file=sys.stderr)
         return 1

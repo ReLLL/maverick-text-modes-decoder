@@ -4,6 +4,60 @@ read_when: Changing thresholds, supported ranges, compatibility, or reliability 
 
 # Validation
 
+## Release 1.0.51, 2026-11-01
+
+The release gate passed all 15 standalone C++ tests, 31 Python/native macOS
+installer and compatibility tests, and all 15 AddressSanitizer checks. The three
+matching real-ImGui transcript/presentation suites passed. Brown 1.2.1,
+standard 1.2.0 and the reviewed standard 1.3.2 nightly passed fresh real-host
+lifecycle checks with normal zero process exit. Extracted release packages
+passed native loader preflight, including automatic legacy/current standard
+payload selection. ZIP integrity and Windows package manifests were checked.
+
+The Windows native cross-build and .NET 9 adapter build passed; the managed
+build reported zero warnings and errors. Matching runtime binaries and source
+archives were verified during packaging. Windows execution was not repeated
+for this release because the local virtual-machine service was unavailable;
+the earlier host test and preview limitations below still apply. These checks
+do not establish new live-RF decoding quality or high-rate performance.
+
+The stopped local Brown, standard SDR++ and Beige profiles were updated using
+the backed-up installer. Installed signatures and runtime library probes passed;
+receiver configuration was preserved apart from expected sidebar-label migration.
+Beige uses a separate private build against its current 1.3.57 headers and app,
+with a private SDK contract. Its core/executable matched the completed host build,
+and a separate real-host lifecycle check exited zero. That payload is excluded
+from the public Brown and standard packages. Normal receiver profiles remained
+stopped; these installation checks are separate from live reception testing.
+
+## Hidden startup 1.0.51, 2026-10-22
+
+Both macOS host modules and the Windows native worker build. The SDR# managed
+adapter builds with zero warnings and errors. Both matching ImGui suites and
+six installer tests pass. Fourteen core targets passed in the full run; the CW
+engine test reported one dropped audio block during concurrent builds, then
+passed alone in eight seconds. No decoder or queue implementation changed.
+
+An isolated Brown profile loaded the new module and reached its main window
+with Maverick hidden. The live receiver profile was not used or updated. The
+explicit Open path remains covered by the existing presentation regressions;
+this check did not exercise the sidebar button or Windows startup at runtime.
+An additional standard-host launch exited before producing any log output, so
+its startup behavior is supported by the build and matching ImGui checks only.
+
+The installed Beige profile was subsequently found still loading 1.0.50.
+A separate local 1.0.51 build against Beige's headers and bundled core/VOLK
+was installed with the stopped receiver closed and the previous payload/config
+backed up. The installed binary matches that build, SHA-256
+`39b96569b5989ccadcb69755ea7d615cf641ecd6767cf25b00d6866c32f00493`.
+Two normal Beige 1.3.30 startups show Maverick hidden and its sidebar Open
+button available. Explicit Open shows the window; quitting with it open and
+relaunching still starts hidden. The module stays enabled. Dial/source,
+radio/source configuration and all 34 existing CW log prefixes verify.
+Reception was stopped throughout; this check establishes startup/presentation,
+not live decoding accuracy. The Beige build is local and is not a public
+Brown/standard package.
+
 ## Maverick rename and Windows preview 1.0.50, 2026-10-19
 
 The existing GitHub repository was renamed in place, preserving earlier
@@ -604,3 +658,81 @@ Release preparation follow-up: macOS CI exposed a test assumption that a receive
 A short clean CQ followed by silence reproduced missing output in 1.0.23. Starting candidate agreement earlier fixes this regression at 5, 8, 12, 18, 25 and 40 WPM in both timing paths while retaining the startup-pulse rejection tests. Core/recovery, three installer tests, ASan/UBSan and the real-ImGui test passed. The ImGui test also checks that reopening an off-screen window after resizing to 640 x 480 places it within view, focuses it and raises it above another panel.
 
 The installed binary matched the Release build (SHA-256 `2ebb9fdea25144c320a2a27e3962901deb758278389800a23bc9c433a9a2b0d5`). Brown loaded version 1.0.24; disabling and re-enabling the plugin visibly restored its centered window. Reception resumed at the pre-update 14.031070 MHz with live text and no reported drops or errors. This verifies operation, not the accuracy of every received character. A separate 20-second fading recording produced no text in either 1.0.23 or 1.0.24; the startup improvement is demonstrated by the controlled short-CQ regression, not that recording.
+
+## macOS host dependency compatibility (1.0.51, 2026-11-01)
+
+The existing standard Maverick binary reproduced the missing VOLK 3.1 load
+failure against SDR++ 1.3.2. Its old load command used
+`/usr/local/lib/libvolk.3.1.dylib`; the current host bundles VOLK 3.3. A filename
+substitution alone does not validate the host's C++/ImGui ABI.
+
+Schema-2 payloads now bind to reviewed source-header/host-image contracts in
+`resources/host-sdks.json`. Build configuration rejects the current 1.3.2 app
+with the old 1.2.0 headers. Manifests cover plugin integrity, the host executable,
+core and transitive non-system libraries. The installer selects matching local
+variants, checks architecture/minimum OS, repairs only staged plugin paths,
+ad hoc signs the copy and binds symbols before touching installed files.
+Missing runtime-guard exports are failures, including during build sealing.
+
+Verified on Apple Silicon, macOS 26.6.2:
+
+| Host | Matching source | Bundled VOLK | Build and preflight | Real Radio/CW lifecycle and whole-process exit |
+| --- | --- | --- | --- | --- |
+| Brown 1.2.1 | `679f48de` | 3.3 | Pass | Pass, exit 0 |
+| Standard 1.2.0 | `762444d` | 3.1 | Pass | Pass, exit 0 |
+| Standard 1.3.2, October 23 nightly | `f10fb98` | 3.3 | Pass | Pass, exit 0 |
+
+Real-host checks use owned temporary profiles, the selected host's own Radio
+module, a null audio sink and CW mode, with digital monitoring disabled. A local,
+unshipped test interposer keeps GLFW windows hidden. Each check verifies the
+strict runtime image guard, post-init, 30 frames, disable/enable, explicit module
+destruction and normal host cleanup. Module lifecycle completion is logged
+separately from the mandatory zero process exit. No installed host bundle is
+patched or re-signed, and no existing user profile is installed or replaced.
+
+The main executable is identified by its `MH_EXECUTE` header. An inserted dylib
+can occupy dyld index zero, so index zero is not a valid executable-identity
+assumption. A permanent native regression checks strict validation with an
+inserted dylib. Mapped UUID checks also reject a stale loaded core after its file
+has been replaced. Only the explicit installer-probe export omits the main
+executable; the installer checks that selected executable separately. Ordinary
+factory calls do not receive that exemption.
+
+Validation also passed 15 standalone C++ tests and 31 Python/native Mach-O
+regressions, plus the matching Brown, standard 1.2.0 and standard 1.3.2 ImGui
+transcript suites. Native cases cover app relocation, real symbol binding,
+missing/corrupt dependencies, unsupported architecture/minimum OS, plugin
+corruption, missing guards, stale-header contract rejection, UUID drift and
+transactional configuration recovery. Extracted packages were checked for
+current/legacy local-payload selection; release allowlists exclude host binaries
+and private paths.
+The actual CLI also passed fresh install and upgrade in an owned temporary
+profile, preserving disabled preferences, producing two backups and verifying
+the installed signature. A compiled host fixture launched as `./MacOS/sdrpp`
+was detected through its kernel executable path and rejected before profile
+changes.
+
+Test-fixture failures are retained separately:
+
+- A no-plugin Brown baseline with no Radio stream reproduces a nonzero shutdown
+  at `MobileMainWindow::end` / `QSOAudioRecorder::end`. The pinned source leaves
+  `radioStream` unset when no streams exist and dereferences it during `end`.
+  The valid Radio fixture exits zero. This is a reproduced fixture-dependent
+  host failure, not evidence of a Maverick destructor failure.
+- A supplied standard 1.2.0 report aborts in HIServices application registration
+  during `glfwInit`, before plugin loading; its underlying cause remains
+  unestablished. Subsequent startup hangs were sampled inside AppKit's
+  crash-state restoration modal, also before plugin loading. Test-only volatile
+  restoration defaults remove that modal from the fixture without changing
+  saved application preferences. The valid standard fixture subsequently exits
+  zero. Do not equate that modal diagnosis with proof of the earlier abort's cause.
+- Early assertion-based smoke checks produced process aborts when the index-zero
+  assumption rejected the real executable. Subsequent fixtures use controlled,
+  logged nonzero failures rather than assertion-driven crash dialogs. The
+  corrected executable check retains both mapped UUID and file-hash validation.
+
+These are build, loader and CW/Radio lifecycle results. They do not establish new
+RF decoding quality, gap-free high-rate operation, macOS 27 behavior, Intel host
+support or universal compatibility with future nightlies. Unknown header/image
+pairs require a matching reviewed build; they are never automatically certified,
+renamed into compatibility or downloaded by the plugin/installer.

@@ -36,7 +36,14 @@ internal unsafe sealed class DecoderBridge : IIQProcessor,IStreamProcessor,IDisp
     {
         this.control=control;enabled=Utils.GetBooleanSetting("maverickDecoder.enabled",true);
         control.PropertyChanged+=ControlChanged;
-        timer.Tick+=(_,_)=>{if(disposed)return;EnsureWorker(Interlocked.Exchange(ref openRequested,0)!=0);ApplyAction();SendMetadata();};timer.Start();
+        timer.Tick+=(_,_)=>
+        {
+            if(disposed)return;
+            bool show=Interlocked.Exchange(ref openRequested,0)!=0;
+            EnsureWorker(show);
+            if(show&&running)Enqueue(new{kind="show"});
+            ApplyAction();SendMetadata();
+        };timer.Start();
     }
     private void Invalidate(){Interlocked.Increment(ref captureEpoch);Interlocked.Exchange(ref resetNeeded,1);}
     private void ControlChanged(object? sender,System.ComponentModel.PropertyChangedEventArgs e)

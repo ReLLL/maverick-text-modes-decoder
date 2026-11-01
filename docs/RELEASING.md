@@ -18,6 +18,27 @@ python3 scripts/package.py --binary build-release/cw_notebook.dylib
 python3 scripts/package.py --host sdrpp --binary build-sdrpp/cw_notebook.dylib
 ```
 
+Build every supported host revision with its matching source headers and app.
+The build generates an exact-image ABI manifest and runtime guard; a version
+string or symbol inventory is insufficient evidence for C++/ImGui layouts.
+Update the reviewed pair in `resources/host-sdks.json` only after resolving the
+host binary's actual CI/source revision, comparing its headers and validating
+the candidate. Configuration and sealing reject pairs absent from that catalog.
+For private local forks use a separate `CW_HOST_SDK_FILE`; the public packager
+rejects those private contracts. Never update a contract simply to clear a check.
+Run the installer's `--check --app ...` against each host, then smoke-test actual
+receiver operation before claiming that host revision is supported. The check
+binds symbols but does not run plugin lifecycle or prove reception quality.
+Never regenerate a manifest just to accept a different host/dependency image.
+
+To include an older supported revision with a newer primary payload, repeat
+`--variant /path/to/other-build/cw_notebook.dylib` on the package command. All
+variants must be the same plugin version, host family and architecture. Test an
+extracted ZIP against every corresponding app; verify automatic selection as
+well as rejection of unknown hosts, damaged dependencies and plugin corruption.
+Ship no host libraries. Older label-only manifests require rebuilding; they do
+not establish an ABI contract for the new installer.
+
 This creates separate versioned brown/sdrpp ZIPs and a combined `SHA256SUMS.txt` in ignored `dist/`, using an explicit allowlist. Each archive includes its binary and host manifest, installer, README, changelog, license and third-party notices. It does not include logs, fixtures, config or private build directories. Brown is the primary target; test both hosts' native receiver integration, replay/retune, UI library and installer before claiming support. Never interchange binaries.
 
 Inspect `otool -L`, `vtool -show-build`, and `strings` for dependency paths, minimum OS and personal build paths. Do not re-sign or modify Brown. This community plugin is not a notarized standalone application; document that accurately. Publish source at the same tag as any binary.

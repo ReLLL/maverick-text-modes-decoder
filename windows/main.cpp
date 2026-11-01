@@ -24,6 +24,7 @@ int main(){try{
  
  SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
  if(!glfwInit())throw std::runtime_error("Windows graphics initialization failed");glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR,3);glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR,0);
+ glfwWindowHint(GLFW_VISIBLE,GLFW_FALSE);
  auto* window=glfwCreateWindow(1100,760,notebook::productName,nullptr,nullptr);if(!window){glfwTerminate();throw std::runtime_error("OpenGL 3 support is required");}
  glfwMakeContextCurrent(window);glfwSwapInterval(1);IMGUI_CHECKVERSION();ImGui::CreateContext();ImGui::StyleColorsDark();auto& io=ImGui::GetIO();io.ConfigFlags|=ImGuiConfigFlags_NavEnableKeyboard;
  auto settings=(root/"interface.ini").u8string();io.IniFilename=settings.c_str();

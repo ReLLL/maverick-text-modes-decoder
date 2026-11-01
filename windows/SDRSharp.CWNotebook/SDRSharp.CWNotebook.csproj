@@ -3,7 +3,7 @@
     <TargetFramework>net9.0-windows</TargetFramework>
     <EnableWindowsTargeting>true</EnableWindowsTargeting><UseWindowsForms>true</UseWindowsForms>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors><Version>1.0.50</Version>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors><Version>1.0.51</Version>
     <Authors>ReLLL</Authors><Company>ReLLL</Company>
     <AssemblyName>SDRSharp.MaverickDecoder</AssemblyName>
     <Description>Maverick Text Modes Decoder: CW / RTTY / JS8 / Olivia / PSK31 / PSK63 for SDR#.</Description>

@@ -18,7 +18,7 @@ void CWNotebook::postInit(){
     js8Enabled_=cw::host::fecEnabled(name_,true);oliviaEnabled_=cw::host::fecEnabled(name_,false);
     syncDigitalMonitoring();metadata();
 }
-void CWNotebook::enable(){enabled_=true;window_=true;presentWindow_=true;metadata();}
+void CWNotebook::enable(){enabled_=true;metadata();}
 void CWNotebook::disable(){enabled_=false;accept_=false;if(rtty_)rtty_->enabled(false);engine_.command("save");metadata();}
 void CWNotebook::select(const std::string& name){streamName_=name;engine_.command("reset");}
 void CWNotebook::detach(){accept_=false;engine_.command("reset");}

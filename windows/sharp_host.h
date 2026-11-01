@@ -16,7 +16,7 @@ struct SharpState {double center=0,frequency=0,rate=0,width=500;std::string mode
 class SharpHost {
 public:
     std::filesystem::path root,binary;
-    std::atomic<bool> alive{true},show{true};
+    std::atomic<bool> alive{true},show{false};
     std::function<void(SharpBlock)> consume;
     void start();void finish();void plan(Json value);void request(Json value);
     SharpState state(){std::lock_guard<std::mutex> lock(mutex_);return state_;}
